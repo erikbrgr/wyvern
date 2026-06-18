@@ -1,0 +1,7 @@
+!alias attack <drac2>
+target = "goblin"
+result = vroll("1d20 + 5")
+damage = roll("2d6 + 3")
+out = f"Attacking {target}: {result.total}"
+</drac2>
+{{out}} for {{damage}} damage.
