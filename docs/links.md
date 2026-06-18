@@ -1,0 +1,5 @@
+- Avrae Documentation: https://avrae.readthedocs.io/en/latest/
+- Avrae Bot Repo: https://github.com/avrae/avrae
+- Draconic Repo: https://github.com/avrae/draconic
+- Croebh VSCode Plugin: https://github.com/Croebh/avrae-vscode
+- Alluria Avrae Repo: https://github.com/erikbrgr/alluria-avrae
