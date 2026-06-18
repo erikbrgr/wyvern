@@ -1,0 +1,5 @@
+def get_stat(character, stat):
+    stats = character().stats
+    return getattr(stats, stat, 0)
+
+STAT_NAMES = ["str", "dex", "con", "int", "wis", "cha"]
