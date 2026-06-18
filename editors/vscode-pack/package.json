@@ -1,0 +1,20 @@
+{
+  "name": "avrae-developer-pack",
+  "displayName": "Avrae Developer Pack",
+  "description": "One-click install for full Avrae alias development: Avrae Utilities (by Croebh) for GVAR management and API integration, plus Wyvern for Draconic language intelligence.",
+  "version": "0.1.0",
+  "publisher": "erikbrgr",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erikbrgr/wyvern"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Extension Packs"],
+  "extensionPack": [
+    "Croebh.avrae-utilities",
+    "erikbrgr.wyvern-lsp"
+  ]
+}

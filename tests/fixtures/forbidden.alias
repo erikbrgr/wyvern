@@ -1,0 +1,7 @@
+!alias bad <drac2>
+import os
+class Foo:
+    pass
+x = os.path.join("a", "b")
+</drac2>
+{{x}}

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Draconic",
+  "scopeName": "source.draconic",
+  "fileTypes": ["alias", "snippet", "gvar", "draconic"],
+  "patterns": [
+    { "include": "#drac2-block" },
+    { "include": "#double-brace-block" },
+    { "include": "#single-brace-dice" },
+    { "include": "#angle-bracket-var" },
+    { "include": "#command-flags" },
+    { "include": "#template-text" }
+  ],
+  "repository": {
+    "drac2-block": {
+      "comment": "<drac2>...</drac2> multi-line embedded Python code block",
+      "name": "meta.embedded.block.python.draconic",
+      "begin": "(<)(drac2)(>)",
+      "end": "(</)\\s*(drac2)\\s*(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.draconic" },
+        "2": { "name": "entity.name.tag.draconic" },
+        "3": { "name": "punctuation.definition.tag.end.draconic" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.draconic" },
+        "2": { "name": "entity.name.tag.draconic" },
+        "3": { "name": "punctuation.definition.tag.end.draconic" }
+      },
+      "contentName": "meta.embedded.block.python",
+      "patterns": [
+        { "include": "#avrae-builtins" },
+        { "include": "source.python" }
+      ]
+    },
+
+    "double-brace-block": {
+      "comment": "{{expr}} inline Python expression block",
+      "name": "meta.embedded.inline.python.draconic",
+      "begin": "\\{\\{",
+      "end": "\\}\\}",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.embedded.begin.draconic" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.embedded.end.draconic" }
+      },
+      "contentName": "meta.embedded.block.python",
+      "patterns": [
+        { "include": "#avrae-builtins" },
+        { "include": "source.python" }
+      ]
+    },
+
+    "single-brace-dice": {
+      "comment": "{expr} single-brace dice roll / variable substitution — NOT a Python block",
+      "name": "meta.embedded.dice.draconic",
+      "match": "(?<!\\{)(\\{)([^{}]+)(\\})(?!\\})",
+      "captures": {
+        "1": { "name": "punctuation.definition.dice.begin.draconic" },
+        "2": { "name": "constant.other.dice-expression.draconic" },
+        "3": { "name": "punctuation.definition.dice.end.draconic" }
+      }
+    },
+
+    "angle-bracket-var": {
+      "comment": "<varname> variable substitution — only match identifier-like content",
+      "name": "variable.other.substitution.draconic",
+      "match": "(<)([A-Za-z_][A-Za-z0-9_]*)(>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.begin.draconic" },
+        "2": { "name": "variable.other.draconic" },
+        "3": { "name": "punctuation.definition.variable.end.draconic" }
+      }
+    },
+
+    "command-flags": {
+      "comment": "Avrae alias command flags: -title, -desc, -f, -d, etc.",
+      "name": "keyword.operator.flag.draconic",
+      "match": "\\B-(?:title|desc|image|footer|thumb|color|phrase|sb|attack|adv|dis|sadv|sdis|i|h|here|f|b|d)(?:\\d*)\\b"
+    },
+
+    "avrae-builtins": {
+      "comment": "Avrae-specific built-in functions and objects, for use inside code blocks",
+      "name": "support.function.builtin.avrae.draconic",
+      "match": "\\b(roll|vroll|load_json|dump_json|get_gvar|set_uvar|get_uvar|delete_uvar|set_svar|get_svar|delete_svar|set_cvar|get_cvar|delete_cvar|err|header|randint|rand|sqrt|argparse|character|combat|ctx|typeof|ceil|floor)\\b"
+    },
+
+    "template-text": {
+      "comment": "Plain template text outside of code blocks",
+      "name": "string.unquoted.template.draconic",
+      "match": "[^{}<]+"
+    }
+  }
+}
