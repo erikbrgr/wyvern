@@ -8,8 +8,8 @@ import ast
 from lsprotocol import types
 from pygls.lsp.server import LanguageServer
 
-from wyvern.parser.analysis import parse
-from wyvern.parser.preprocessor import Region
+from src.parser.analysis import parse
+from src.parser.preprocessor import Region
 
 
 # AST node types that are not supported in Draconic, with user-friendly messages.
