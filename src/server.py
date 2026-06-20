@@ -1,8 +1,8 @@
 from pygls.lsp.server import LanguageServer
 from lsprotocol import types
 
-from wyvern import __version__
-from wyvern.features import completion, diagnostics, hover, symbols
+from src import __version__
+from src.features import completion, diagnostics, hover, symbols
 
 server = LanguageServer("wyvern", __version__)
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from lsprotocol import types
 
-from wyvern.builtins import BUILTINS
-from wyvern.parser.analysis import find_name_at, parse
+from src.builtins import BUILTINS
+from src.parser.analysis import find_name_at, parse
 
 
 def get_hover(source: str, position: types.Position) -> types.Hover | None:
