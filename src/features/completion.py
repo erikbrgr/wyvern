@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
+
 from lsprotocol import types
 
-from src.builtins import BUILTINS, BuiltinInfo
+from src.builtins import BUILTINS, CLASS_REGISTRY, BuiltinInfo
 from src.parser.analysis import parse
 
 
@@ -22,6 +24,15 @@ _USER_KIND_MAP: dict[str, types.CompletionItemKind] = {
 
 
 def get_completions(source: str, position: types.Position) -> types.CompletionList:
+    lines = source.splitlines()
+    line_text = lines[position.line] if position.line < len(lines) else ""
+    prefix = line_text[: position.character]
+
+    # Check for attribute access (e.g. "character().", "ctx.author.", "args.")
+    members = _get_member_completions(prefix)
+    if members is not None:
+        return types.CompletionList(is_incomplete=False, items=members)
+
     items: list[types.CompletionItem] = []
 
     # Built-in completions
@@ -40,6 +51,104 @@ def get_completions(source: str, position: types.Position) -> types.CompletionLi
             )
 
     return types.CompletionList(is_incomplete=False, items=items)
+
+
+def _get_member_completions(prefix: str) -> list[types.CompletionItem] | None:
+    """
+    If `prefix` ends with an attribute-access chain, return completion items
+    for the final type's members.  Returns None if no attribute access is detected.
+
+    Handles single-level:   character().  →  AliasCharacter members
+    Handles two-level:      ctx.author.   →  AliasAuthor members
+    """
+    # Match the chain of identifiers/calls before the trailing dot
+    # e.g. "character()." → ["character()"]
+    #      "ctx.author."  → ["ctx", "author"]
+    #      "combat().me." → ["combat()", "me"]
+    m = re.search(r'((?:\w+(?:\(\))?\.)*\w+(?:\(\))?)\.$', prefix)
+    if not m:
+        return None
+
+    chain_str = m.group(1)
+    parts = [p.rstrip("()") for p in chain_str.split(".")]
+
+    type_name = _resolve_chain(parts)
+    if type_name is None:
+        return None
+
+    return _class_completion_items(type_name)
+
+
+def _resolve_chain(parts: list[str]) -> str | None:
+    """Walk a dotted chain and return the final resolved type name, or None."""
+    if not parts:
+        return None
+
+    # Resolve the first identifier from global BUILTINS
+    root = parts[0]
+    if root not in BUILTINS:
+        return None
+    current_type = BUILTINS[root].return_type
+    if not current_type:
+        return None
+    # Strip "| None" suffixes (e.g. "SimpleCombat | None" → "SimpleCombat")
+    current_type = current_type.split("|")[0].strip()
+
+    # Walk subsequent parts using CLASS_REGISTRY member return types
+    for part in parts[1:]:
+        cls_info = CLASS_REGISTRY.get(current_type)
+        if cls_info is None:
+            return None
+        member_type = _find_member_type(cls_info, part)
+        if member_type is None:
+            return None
+        current_type = member_type.split("|")[0].strip()
+
+    return current_type if current_type in CLASS_REGISTRY else None
+
+
+def _find_member_type(cls_info, name: str) -> str | None:
+    """Return the return_type of a named method or property in a ClassInfo, following bases."""
+    from src.builtins.registry import ClassInfo
+    visited: set[str] = set()
+
+    def _search(info: ClassInfo) -> str | None:
+        if info.name in visited:
+            return None
+        visited.add(info.name)
+
+        for m in info.methods + info.properties:
+            if m.name == name:
+                return m.return_type
+
+        for base_name in info.bases:
+            base = CLASS_REGISTRY.get(base_name)
+            if base:
+                result = _search(base)
+                if result is not None:
+                    return result
+        return None
+
+    return _search(cls_info)
+
+
+def _class_completion_items(type_name: str) -> list[types.CompletionItem]:
+    """Return completion items for all members of `type_name`, including inherited ones."""
+    items: list[types.CompletionItem] = []
+    visited: set[str] = set()
+
+    def _collect(name: str) -> None:
+        if name in visited or name not in CLASS_REGISTRY:
+            return
+        visited.add(name)
+        cls_info = CLASS_REGISTRY[name]
+        for member in cls_info.methods + cls_info.properties:
+            items.append(_builtin_item(member.name, member))
+        for base in cls_info.bases:
+            _collect(base)
+
+    _collect(type_name)
+    return items
 
 
 def _builtin_item(name: str, info: BuiltinInfo) -> types.CompletionItem:
