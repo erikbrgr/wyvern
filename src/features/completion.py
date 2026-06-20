@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from lsprotocol import types
 
-from wyvern.builtins import BUILTINS, BuiltinInfo
-from wyvern.parser.analysis import parse
+from src.builtins import BUILTINS, BuiltinInfo
+from src.parser.analysis import parse
 
 
 _KIND_MAP: dict[str, types.CompletionItemKind] = {
