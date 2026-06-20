@@ -1,6 +1,6 @@
 from lsprotocol import types
 
-from wyvern.features.completion import get_completions
+from src.features.completion import get_completions
 
 
 def _pos(line: int, char: int) -> types.Position:

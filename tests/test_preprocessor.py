@@ -1,4 +1,4 @@
-from wyvern.parser.preprocessor import extract_regions, _normalize
+from src.parser.preprocessor import extract_regions, _normalize
 
 
 def test_drac2_extraction():
