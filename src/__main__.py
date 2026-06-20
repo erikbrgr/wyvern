@@ -1,6 +1,6 @@
 import argparse
 
-from wyvern.server import server
+from src.server import server
 
 
 def main() -> None:

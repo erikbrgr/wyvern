@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-wyvern = "wyvern.__main__:main"
+wyvern = "src.__main__:main"
 
 [project.optional-dependencies]
 dev = [
@@ -27,7 +27,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/wyvern"]
+packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -43,4 +43,4 @@ select = ["E", "F", "I", "UP"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src/wyvern"]
+files = ["src"]
