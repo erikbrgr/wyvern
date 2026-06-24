@@ -4,8 +4,8 @@ import ast
 
 from lsprotocol import types
 
-from src.parser.analysis import parse
-from src.parser.preprocessor import Region
+from wyvern.parser.analysis import parse
+from wyvern.parser.preprocessor import Region
 
 
 def get_symbols(source: str, uri: str = "") -> list[types.DocumentSymbol]:

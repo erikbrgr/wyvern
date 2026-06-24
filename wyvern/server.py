@@ -1,8 +1,8 @@
 from pygls.lsp.server import LanguageServer
 from lsprotocol import types
 
-from src import __version__
-from src.features import completion, diagnostics, hover, symbols
+from wyvern import __version__
+from wyvern.features import completion, diagnostics, hover, symbols
 
 server = LanguageServer("wyvern", __version__)
 
@@ -29,7 +29,7 @@ def did_change(ls: LanguageServer, params: types.DidChangeTextDocumentParams) ->
 
 @server.feature(types.TEXT_DOCUMENT_DID_CLOSE)
 def did_close(ls: LanguageServer, params: types.DidCloseTextDocumentParams) -> None:
-    ls.publish_diagnostics(params.text_document.uri, [])
+    ls.text_document_publish_diagnostics(types.PublishDiagnosticsParams(uri=params.text_document.uri, diagnostics=[]))
 
 
 @server.feature(

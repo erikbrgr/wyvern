@@ -1,8 +1,8 @@
 import ast
 
-from src.features.diagnostics import _lint_tree, _syntax_error_diagnostic
-from src.parser.analysis import parse
-from src.parser.preprocessor import Region
+from wyvern.features.diagnostics import _lint_tree, _syntax_error_diagnostic
+from wyvern.parser.analysis import parse
+from wyvern.parser.preprocessor import Region
 
 
 def _region(line_offset: int = 0) -> Region:
@@ -52,7 +52,7 @@ def test_forbidden_nodes_from_alias_fixture():
     result = parse(source, "forbidden.alias")
     assert len(result.syntax_errors) == 0
     all_diags: list = []
-    from src.features.diagnostics import _lint_tree
+    from wyvern.features.diagnostics import _lint_tree
     for region, tree in result.trees:
         all_diags.extend(_lint_tree(tree, region))
     messages = [d.message for d in all_diags]
@@ -65,7 +65,7 @@ def test_valid_alias_no_diagnostics():
         source = f.read()
     result = parse(source, "simple.alias")
     assert len(result.syntax_errors) == 0
-    from src.features.diagnostics import _lint_tree
+    from wyvern.features.diagnostics import _lint_tree
     diags = []
     for region, tree in result.trees:
         diags.extend(_lint_tree(tree, region))
