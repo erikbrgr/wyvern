@@ -6,3 +6,9 @@ __pycache__/
 dist/
 .mypy_cache/
 .ruff_cache/
+.venv/
+
+# VSCode extension
+editors/vscode/node_modules/
+editors/vscode/out/
+editors/vscode/*.vsix

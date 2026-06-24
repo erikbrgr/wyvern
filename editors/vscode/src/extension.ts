@@ -114,7 +114,7 @@ function isWyvernInstalled(pythonPath: string): Promise<boolean> {
 }
 
 function installWyvern(pythonPath: string): Promise<void> {
-  return vscode.window.withProgress(
+  return Promise.resolve(vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: "Installing wyvern-lsp…",
@@ -139,5 +139,5 @@ function installWyvern(pythonPath: string): Promise<void> {
           }
         });
       })
-  );
+  ));
 }
