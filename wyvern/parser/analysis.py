@@ -9,7 +9,7 @@ from typing import Literal
 
 from lsprotocol import types
 
-from src.parser.preprocessor import Region, extract_regions
+from wyvern.parser.preprocessor import Region, extract_regions
 
 
 @dataclass

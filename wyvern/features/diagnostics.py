@@ -8,8 +8,8 @@ import ast
 from lsprotocol import types
 from pygls.lsp.server import LanguageServer
 
-from src.parser.analysis import parse
-from src.parser.preprocessor import Region
+from wyvern.parser.analysis import parse
+from wyvern.parser.preprocessor import Region
 
 
 # AST node types that are not supported in Draconic, with user-friendly messages.
@@ -42,7 +42,7 @@ def publish(ls: LanguageServer, uri: str, source: str) -> None:
     for region, tree in result.trees:
         diagnostics.extend(_lint_tree(tree, region))
 
-    ls.publish_diagnostics(uri, diagnostics)
+    ls.text_document_publish_diagnostics(types.PublishDiagnosticsParams(uri=uri, diagnostics=diagnostics))
 
 
 def _syntax_error_diagnostic(error: SyntaxError, region: Region) -> types.Diagnostic:
