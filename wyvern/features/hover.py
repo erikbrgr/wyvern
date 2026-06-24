@@ -4,8 +4,8 @@ import re
 
 from lsprotocol import types
 
-from src.builtins import BUILTINS, CLASS_REGISTRY
-from src.parser.analysis import find_name_at, parse
+from wyvern.builtins import BUILTINS, CLASS_REGISTRY
+from wyvern.parser.analysis import find_name_at, parse
 
 
 def get_hover(source: str, position: types.Position) -> types.Hover | None:

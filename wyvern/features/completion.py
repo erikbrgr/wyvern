@@ -4,8 +4,8 @@ import re
 
 from lsprotocol import types
 
-from src.builtins import BUILTINS, CLASS_REGISTRY, BuiltinInfo
-from src.parser.analysis import parse
+from wyvern.builtins import BUILTINS, CLASS_REGISTRY, BuiltinInfo
+from wyvern.parser.analysis import parse
 
 
 _KIND_MAP: dict[str, types.CompletionItemKind] = {
@@ -109,7 +109,7 @@ def _resolve_chain(parts: list[str]) -> str | None:
 
 def _find_member_type(cls_info, name: str) -> str | None:
     """Return the return_type of a named method or property in a ClassInfo, following bases."""
-    from src.builtins.registry import ClassInfo
+    from wyvern.builtins.registry import ClassInfo
     visited: set[str] = set()
 
     def _search(info: ClassInfo) -> str | None:
