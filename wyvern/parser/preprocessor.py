@@ -47,9 +47,9 @@ def extract_regions(source: str, uri: str = "") -> list[Region]:
         # Count newlines before the opening tag to get line_offset
         before = source[: match.start()]
         tag_line = before.count("\n")
-        # The opening tag <drac2> itself occupies one line; inner starts on next line
-        inner_line = tag_line + 1
-        regions.append(Region(code=_normalize(inner), line_offset=inner_line))
+        # The \n immediately after <drac2> is the first character of `inner`, so
+        # Python line 1 of the region sits on the same file line as the tag itself.
+        regions.append(Region(code=_normalize(inner), line_offset=tag_line))
 
     # Extract {{expr}} single-expression inline blocks
     for match in _DOUBLE_BRACE_RE.finditer(source):

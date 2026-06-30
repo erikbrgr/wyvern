@@ -5,7 +5,8 @@ import re
 from lsprotocol import types
 
 from wyvern.builtins import BUILTINS, CLASS_REGISTRY, BuiltinInfo
-from wyvern.parser.analysis import parse
+from wyvern.parser.analysis import DefinitionInfo, parse
+from wyvern.parser.gvar_resolver import resolve_gvar_definitions
 
 
 _KIND_MAP: dict[str, types.CompletionItemKind] = {
@@ -23,13 +24,19 @@ _USER_KIND_MAP: dict[str, types.CompletionItemKind] = {
 }
 
 
-def get_completions(source: str, position: types.Position) -> types.CompletionList:
+def get_completions(
+    source: str,
+    position: types.Position,
+    workspace_paths: list[str] | None = None,
+) -> types.CompletionList:
     lines = source.splitlines()
     line_text = lines[position.line] if position.line < len(lines) else ""
     prefix = line_text[: position.character]
 
-    # Check for attribute access (e.g. "character().", "ctx.author.", "args.")
-    members = _get_member_completions(prefix)
+    result = parse(source)
+
+    # Check for attribute access (e.g. "character().", "ctx.author.", "Hunt.")
+    members = _get_member_completions(prefix, result.using_imports, workspace_paths or [])
     if members is not None:
         return types.CompletionList(is_incomplete=False, items=members)
 
@@ -40,7 +47,6 @@ def get_completions(source: str, position: types.Position) -> types.CompletionLi
         items.append(_builtin_item(name, info))
 
     # User-defined symbol completions
-    result = parse(source)
     for name, defn in result.definitions.items():
         if name not in BUILTINS:
             items.append(
@@ -75,7 +81,11 @@ def _normalize_calls(prefix: str) -> str:
     return "".join(result)
 
 
-def _get_member_completions(prefix: str) -> list[types.CompletionItem] | None:
+def _get_member_completions(
+    prefix: str,
+    using_imports: dict[str, str],
+    workspace_paths: list[str],
+) -> list[types.CompletionItem] | None:
     """
     If `prefix` ends with an attribute-access chain, return completion items
     for the final type's members.  Returns None if no attribute access is detected.
@@ -84,6 +94,7 @@ def _get_member_completions(prefix: str) -> list[types.CompletionItem] | None:
     Handles two-level:      ctx.author.       ->  AliasAuthor members
     Handles call args:      list(items).      ->  list members
     Handles chained args:   character().cc(n). -> AliasCustomCounter members
+    Handles using imports:  Hunt.             ->  symbols from the Hunt gvar
     """
     normalized = _normalize_calls(prefix)
     m = re.search(r'((?:\w+(?:\(\))?\.)*\w+(?:\(\))?)\.$', normalized)
@@ -92,6 +103,15 @@ def _get_member_completions(prefix: str) -> list[types.CompletionItem] | None:
 
     chain_str = m.group(1)
     parts = [p.rstrip("()") for p in chain_str.split(".")]
+    root = parts[0]
+
+    # If the root is a using-imported gvar name, resolve its symbols directly.
+    # Return [] (not None) when gvar isn't found so we don't fall through to the
+    # default built-in list — an empty list is the right UX for an unloaded gvar.
+    if root in using_imports and len(parts) == 1:
+        uuid = using_imports[root]
+        defs = resolve_gvar_definitions(uuid, workspace_paths)
+        return [_gvar_def_item(name, info) for name, info in defs.items()]
 
     type_name = _resolve_chain(parts)
     if type_name is None:
@@ -182,6 +202,19 @@ def _class_completion_items(type_name: str) -> list[types.CompletionItem]:
 
     _collect(type_name)
     return items
+
+
+def _gvar_def_item(name: str, info: DefinitionInfo) -> types.CompletionItem:
+    kind = (
+        types.CompletionItemKind.Function
+        if info.kind == "function"
+        else types.CompletionItemKind.Variable
+    )
+    return types.CompletionItem(
+        label=name,
+        kind=kind,
+        detail=f"(gvar) {info.kind}",
+    )
 
 
 def _builtin_item(name: str, info: BuiltinInfo) -> types.CompletionItem:

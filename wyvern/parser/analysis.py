@@ -4,12 +4,17 @@ AST parsing and symbol table construction for Draconic source files.
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass, field
 from typing import Literal
 
 from lsprotocol import types
 
 from wyvern.parser.preprocessor import Region, extract_regions
+
+# Regex-based fallback for extracting using() imports when ast.parse() fails
+_USING_REGEX = re.compile(r'\busing\s*\(([^)]+)\)')
+_USING_KW_REGEX = re.compile(r'([A-Za-z_]\w*)\s*=\s*["\']([^"\']+)["\']')
 
 
 @dataclass
@@ -28,6 +33,7 @@ class ParseResult:
     trees: list[tuple[Region, ast.Module]] = field(default_factory=list)
     syntax_errors: list[tuple[Region, SyntaxError]] = field(default_factory=list)
     definitions: dict[str, DefinitionInfo] = field(default_factory=dict)
+    using_imports: dict[str, str] = field(default_factory=dict)  # alias -> gvar UUID
 
 
 def parse(source: str, uri: str = "") -> ParseResult:
@@ -39,10 +45,63 @@ def parse(source: str, uri: str = "") -> ParseResult:
             tree = ast.parse(region.code, mode="exec")
             result.trees.append((region, tree))
             _collect_definitions(tree, region, result.definitions)
+            result.using_imports.update(_extract_using_imports(tree))
         except SyntaxError as e:
             result.syntax_errors.append((region, e))
+            # AST parse failed (e.g. module-level `return` in alias blocks) — still
+            # extract using() imports with regex so completions can work.
+            result.using_imports.update(_extract_using_imports_regex(region.code))
 
     return result
+
+
+def extract_top_level_definitions(source: str, uri: str = "") -> dict[str, DefinitionInfo]:
+    """Like parse(), but only returns module-level definitions — skips function-local vars."""
+    defs: dict[str, DefinitionInfo] = {}
+    for region in extract_regions(source, uri):
+        try:
+            tree = ast.parse(region.code, mode="exec")
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                _add_def(defs, node.name, "function", node, region)
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    _collect_assign_targets(target, defs, region)
+            elif isinstance(node, ast.AugAssign):
+                _collect_assign_targets(node.target, defs, region)
+    return defs
+
+
+def _extract_using_imports(tree: ast.Module) -> dict[str, str]:
+    """Return {alias: uuid} for every using(Alias="uuid") call in the tree."""
+    imports: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "using"
+        ):
+            continue
+        for kw in node.value.keywords:
+            if (
+                kw.arg
+                and isinstance(kw.value, ast.Constant)
+                and isinstance(kw.value.value, str)
+            ):
+                imports[kw.arg] = kw.value.value
+    return imports
+
+
+def _extract_using_imports_regex(code: str) -> dict[str, str]:
+    """Regex fallback for when ast.parse() fails — extracts using(Alias="uuid") calls."""
+    imports: dict[str, str] = {}
+    for m in _USING_REGEX.finditer(code):
+        for kw in _USING_KW_REGEX.finditer(m.group(1)):
+            imports[kw.group(1)] = kw.group(2)
+    return imports
 
 
 def _collect_definitions(
