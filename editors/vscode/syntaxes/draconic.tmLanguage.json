@@ -29,6 +29,7 @@
       },
       "contentName": "meta.embedded.block.python",
       "patterns": [
+        { "include": "#using-name-ref" },
         { "include": "#avrae-builtins" },
         { "include": "source.python" }
       ]
@@ -47,6 +48,7 @@
       },
       "contentName": "meta.embedded.block.python",
       "patterns": [
+        { "include": "#using-name-ref" },
         { "include": "#avrae-builtins" },
         { "include": "source.python" }
       ]
@@ -78,6 +80,12 @@
       "comment": "Avrae alias command flags: -title, -desc, -f, -d, etc.",
       "name": "keyword.operator.flag.draconic",
       "match": "\\B-(?:title|desc|image|footer|thumb|color|phrase|sb|attack|adv|dis|sadv|sdis|i|h|here|f|b|d)(?:\\d*)\\b"
+    },
+
+    "using-name-ref": {
+      "comment": "Capitalized using-import names used as receivers (e.g. Hunt.footer, Utils.embed)",
+      "match": "\\b([A-Z][A-Za-z0-9_]*)(?=\\.)",
+      "name": "variable.parameter.draconic"
     },
 
     "avrae-builtins": {
