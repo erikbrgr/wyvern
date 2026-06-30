@@ -34,6 +34,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   }
 
+  // If another extension (e.g. Croebh's) has claimed .gvar files, override the language
+  // so Wyvern's grammar and LSP features apply correctly.
+  const forceGvarLanguage = (doc: vscode.TextDocument) => {
+    if (doc.uri.fsPath.endsWith(".gvar") && doc.languageId !== "draconic") {
+      vscode.languages.setTextDocumentLanguage(doc, "draconic");
+    }
+  };
+  vscode.workspace.textDocuments.forEach(forceGvarLanguage);
+  context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(forceGvarLanguage));
+
   client = createClient(pythonPath);
   client.start();
   context.subscriptions.push(client);
