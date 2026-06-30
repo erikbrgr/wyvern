@@ -34,7 +34,7 @@ def did_close(ls: LanguageServer, params: types.DidCloseTextDocumentParams) -> N
 
 @server.feature(
     types.TEXT_DOCUMENT_COMPLETION,
-    types.CompletionOptions(trigger_characters=[".", "("]),
+    types.CompletionOptions(trigger_characters=["."]),
 )
 def complete(ls: LanguageServer, params: types.CompletionParams) -> types.CompletionList:
     doc = ls.workspace.get_text_document(params.text_document.uri)

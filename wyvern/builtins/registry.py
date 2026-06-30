@@ -30,14 +30,15 @@ class ClassInfo:
     bases: list[str] = field(default_factory=list)
     methods: list[BuiltinInfo] = field(default_factory=list)
     properties: list[BuiltinInfo] = field(default_factory=list)
+    element_type: str | None = None
 
 
 def _fn(name: str, sig: str, doc: str, params: list[str] | None = None, ret: str | None = None) -> BuiltinInfo:
     return BuiltinInfo(name, "function", sig, doc, params, ret)
 
 
-def _cls(name: str, sig: str, doc: str) -> BuiltinInfo:
-    return BuiltinInfo(name, "class", sig, doc)
+def _cls(name: str, sig: str, doc: str, ret: str | None = None) -> BuiltinInfo:
+    return BuiltinInfo(name, "class", sig, doc, None, ret)
 
 
 def _var(name: str, sig: str, doc: str, ret: str | None = None) -> BuiltinInfo:
@@ -73,16 +74,15 @@ _DRACONIC_BUILTINS: list[BuiltinInfo] = [
     _fn("reversed", "reversed(seq)", "Return a reverse iterator.", ["seq"], "reversed"),
     _fn("round", "round(number, ndigits=0)", "Round a number to a given precision.", ["number", "ndigits=0"], "float"),
     _fn("set", "set(iterable=())", "Return a new set object.", ["iterable=()"], "set"),
-    _fn("sorted", "sorted(iterable, *, key=None, reverse=False)", "Return a new sorted list.", ["iterable", "key=None", "reverse=False"], "list"),
     _fn("sum", "sum(iterable, start=0)", "Sum the items of an iterable.", ["iterable", "start=0"], "int | float"),
     _fn("typeof", "typeof(x)", "Return the type name of x as a string. (Draconic alternative to type())", ["x"], "str"),
     _fn("zip", "zip(*iterables)", "Make an iterator that aggregates elements from each iterable.", ["*iterables"], "zip"),
     _cls("bool", "bool(x=False)", "Convert a value to Boolean."),
-    _cls("dict", "dict(**kwargs)", "Create a new dictionary."),
+    _cls("dict", "dict(**kwargs)", "Create a new dictionary.", ret="dict"),
     _cls("float", "float(x=0.0)", "Convert a value to floating-point."),
     _cls("int", "int(x=0, base=10)", "Convert a value to integer."),
-    _cls("list", "list(iterable=())", "Create a new list."),
-    _cls("str", "str(object='')", "Convert a value to string."),
+    _cls("list", "list(iterable=())", "Create a new list.", ret="list"),
+    _cls("str", "str(object='')", "Convert a value to string.", ret="str"),
     _cls("tuple", "tuple(iterable=())", "Create a new tuple."),
     _const("True", "Boolean true constant."),
     _const("False", "Boolean false constant."),
@@ -122,8 +122,6 @@ _AVRAE_BUILTINS: list[BuiltinInfo] = [
     _fn("exists", "exists(name)", "Return True if the variable `name` is defined in the current scope.", ["name: str"], "bool"),
     _fn("get", "get(name, default=None)", "Return the value of `name` from the current scope, or `default` if not defined.", ["name: str", "default=None"], "Any"),
     _fn("err", "err(msg)", "Raise an error and stop alias execution with the given message.", ["msg: str"], "None"),
-    _fn("typeof", "typeof(x)", "Return the type name of x as a string.", ["x"], "str"),
-
     # --- Random ---
     _fn("rand", "rand()", "Return a random floating-point number in [0.0, 1.0).", [], "float"),
     _fn("randint", "randint(start, stop=None, step=1)", "Return a random integer in the given range.\n\n`randint(n)` → random int in [0, n)\n`randint(a, b)` → random int in [a, b]\n`randint(a, b, step)` → random int in [a, b] with step", ["start: int", "stop=None", "step=1"], "int"),
@@ -151,6 +149,74 @@ _AVRAE_BUILTINS: list[BuiltinInfo] = [
     _var("ctx", "ctx: AliasContext", "The context object for the current alias invocation.\n\nAttributes: `ctx.author`, `ctx.channel`, `ctx.guild`, `ctx.prefix`, `ctx.alias`, `ctx.message_id`", "AliasContext"),
 ]
 
+
+# ---------------------------------------------------------------------------
+# Draconic built-in type methods
+# Instance methods accessible on Draconic list/dict/str/set values.
+# ---------------------------------------------------------------------------
+
+_LIST_METHODS = [
+    _fn("append", "append(x)", "Add item to the end of the list.", ["x"], "None"),
+    _fn("clear", "clear()", "Remove all items from the list.", [], "None"),
+    _fn("copy", "copy()", "Return a shallow copy of the list.", [], "list"),
+    _fn("count", "count(x)", "Return the number of times x appears.", ["x"], "int"),
+    _fn("extend", "extend(iterable)", "Extend the list by appending all items from the iterable.", ["iterable"], "None"),
+    _fn("index", "index(x, start=0, stop=None)", "Return the index of the first occurrence of x.", ["x", "start=0", "stop=None"], "int"),
+    _fn("insert", "insert(i, x)", "Insert x before position i.", ["i", "x"], "None"),
+    _fn("pop", "pop(i=-1)", "Remove and return the item at position i.", ["i=-1"], "Any"),
+    _fn("remove", "remove(x)", "Remove the first occurrence of x.", ["x"], "None"),
+    _fn("reverse", "reverse()", "Reverse the list in place.", [], "None"),
+    _fn("sort", "sort(key=None, reverse=False)", "Sort the list in place.", ["key=None", "reverse=False"], "None"),
+]
+
+_DICT_METHODS = [
+    _fn("clear", "clear()", "Remove all items from the dictionary.", [], "None"),
+    _fn("copy", "copy()", "Return a shallow copy of the dictionary.", [], "dict"),
+    _fn("get", "get(key, default=None)", "Return the value for key if present, else default.", ["key", "default=None"], "Any"),
+    _fn("items", "items()", "Return a view of the dictionary's (key, value) pairs.", [], "Any"),
+    _fn("keys", "keys()", "Return a view of the dictionary's keys.", [], "Any"),
+    _fn("pop", "pop(key, default=None)", "Remove and return the value for key.", ["key", "default=None"], "Any"),
+    _fn("update", "update(other)", "Update the dictionary with key/value pairs from other.", ["other"], "None"),
+    _fn("values", "values()", "Return a view of the dictionary's values.", [], "Any"),
+]
+
+_STR_METHODS = [
+    _fn("capitalize", "capitalize()", "Return the string with its first character capitalized.", [], "str"),
+    _fn("count", "count(sub, start=0, stop=None)", "Return the number of occurrences of sub.", ["sub", "start=0", "stop=None"], "int"),
+    _fn("endswith", "endswith(suffix)", "Return True if the string ends with suffix.", ["suffix"], "bool"),
+    _fn("find", "find(sub, start=0, stop=None)", "Return the lowest index where sub is found, or -1.", ["sub", "start=0", "stop=None"], "int"),
+    _fn("format", "format(*args, **kwargs)", "Return a formatted version of the string.", ["*args", "**kwargs"], "str"),
+    _fn("index", "index(sub, start=0, stop=None)", "Like find(), but raise ValueError when sub is not found.", ["sub", "start=0", "stop=None"], "int"),
+    _fn("isdigit", "isdigit()", "Return True if all characters are digits.", [], "bool"),
+    _fn("isalpha", "isalpha()", "Return True if all characters are alphabetic.", [], "bool"),
+    _fn("join", "join(iterable)", "Return a string joining the elements of iterable with this string as separator.", ["iterable"], "str"),
+    _fn("lower", "lower()", "Return the string in lowercase.", [], "str"),
+    _fn("lstrip", "lstrip(chars=None)", "Return the string with leading whitespace (or chars) removed.", ["chars=None"], "str"),
+    _fn("replace", "replace(old, new, count=-1)", "Return the string with all occurrences of old replaced by new.", ["old", "new", "count=-1"], "str"),
+    _fn("rstrip", "rstrip(chars=None)", "Return the string with trailing whitespace (or chars) removed.", ["chars=None"], "str"),
+    _fn("split", "split(sep=None, maxsplit=-1)", "Return a list of the words in the string.", ["sep=None", "maxsplit=-1"], "list"),
+    _fn("splitlines", "splitlines(keepends=False)", "Return a list of the lines in the string.", ["keepends=False"], "list"),
+    _fn("startswith", "startswith(prefix)", "Return True if the string starts with prefix.", ["prefix"], "bool"),
+    _fn("strip", "strip(chars=None)", "Return the string with leading and trailing whitespace (or chars) removed.", ["chars=None"], "str"),
+    _fn("title", "title()", "Return the string in title case.", [], "str"),
+    _fn("upper", "upper()", "Return the string in uppercase.", [], "str"),
+    _fn("zfill", "zfill(width)", "Pad the string on the left with zeros to the given width.", ["width"], "str"),
+]
+
+_SET_METHODS = [
+    _fn("add", "add(elem)", "Add element elem to the set.", ["elem"], "None"),
+    _fn("clear", "clear()", "Remove all elements from the set.", [], "None"),
+    _fn("copy", "copy()", "Return a shallow copy of the set.", [], "set"),
+    _fn("difference", "difference(*others)", "Return a new set with elements not in the others.", ["*others"], "set"),
+    _fn("discard", "discard(elem)", "Remove elem from the set if present.", ["elem"], "None"),
+    _fn("intersection", "intersection(*others)", "Return a new set with elements common to this and all others.", ["*others"], "set"),
+    _fn("issubset", "issubset(other)", "Return True if every element of this set is in other.", ["other"], "bool"),
+    _fn("issuperset", "issuperset(other)", "Return True if every element of other is in this set.", ["other"], "bool"),
+    _fn("pop", "pop()", "Remove and return an arbitrary element.", [], "Any"),
+    _fn("remove", "remove(elem)", "Remove elem from the set. Raises KeyError if not present.", ["elem"], "None"),
+    _fn("union", "union(*others)", "Return a new set with elements from this set and all others.", ["*others"], "set"),
+    _fn("update", "update(*others)", "Update the set, adding elements from all others.", ["*others"], "None"),
+]
 
 # ---------------------------------------------------------------------------
 # Avrae API class registry
@@ -434,9 +500,6 @@ _ALIAS_LEVELS_PROPS = [
     _prop("total_level", "int", "Total character level (sum of all class levels)."),
 ]
 
-_ALIAS_ATTACK_LIST_PROPS = [
-    _prop("__len__", "int", "Number of attacks in the list."),
-]
 
 _ALIAS_ATTACK_PROPS = [
     _prop("name", "str", "Attack name."),
@@ -503,6 +566,26 @@ _ALIAS_SPELLBOOK_SPELL_PROPS = [
 
 
 CLASS_REGISTRY: dict[str, ClassInfo] = {
+    "list": ClassInfo(
+        name="list",
+        doc="Draconic list. Supports standard Python list methods.",
+        methods=_LIST_METHODS,
+    ),
+    "dict": ClassInfo(
+        name="dict",
+        doc="Draconic dictionary. Supports standard Python dict methods.",
+        methods=_DICT_METHODS,
+    ),
+    "str": ClassInfo(
+        name="str",
+        doc="Draconic string. Supports standard Python str methods.",
+        methods=_STR_METHODS,
+    ),
+    "set": ClassInfo(
+        name="set",
+        doc="Draconic set. Supports standard Python set methods.",
+        methods=_SET_METHODS,
+    ),
     "SimpleRollResult": ClassInfo(
         name="SimpleRollResult",
         doc="Result of a `vroll()` call. Contains the dice notation, numeric total, and full verbose string.",
@@ -623,7 +706,7 @@ CLASS_REGISTRY: dict[str, ClassInfo] = {
     "AliasAttackList": ClassInfo(
         name="AliasAttackList",
         doc="List of attacks for a statblock. Access via `character().attacks`. Iterable and subscriptable.",
-        properties=_ALIAS_ATTACK_LIST_PROPS,
+        element_type="AliasAttack",
     ),
     "AliasAttack": ClassInfo(
         name="AliasAttack",
@@ -639,6 +722,7 @@ CLASS_REGISTRY: dict[str, ClassInfo] = {
     "AliasSkills": ClassInfo(
         name="AliasSkills",
         doc="Skill modifiers for a statblock. Access via `character().skills`. Subscriptable by skill name (e.g. `.athletics`, `['stealth']`).",
+        element_type="AliasSkill",
     ),
     "AliasSaves": ClassInfo(
         name="AliasSaves",
