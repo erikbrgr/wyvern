@@ -6,7 +6,7 @@ def test_drac2_extraction():
     regions = extract_regions(source, "foo.alias")
     assert len(regions) == 1
     assert "x = 1" in regions[0].code
-    assert regions[0].line_offset == 1  # inner content starts on line after <drac2>
+    assert regions[0].line_offset == 0  # \n after <drac2> is part of inner; tag is on line 0
 
 
 def test_double_brace_extraction():

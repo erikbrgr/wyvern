@@ -5,6 +5,7 @@
   "fileTypes": [],
   "patterns": [
     { "include": "#using-call" },
+    { "include": "#using-name-ref" },
     { "include": "#avrae-builtins" },
     { "include": "source.python" }
   ],
@@ -24,6 +25,12 @@
         { "include": "source.python" }
       ]
     },
+    "using-name-ref": {
+      "comment": "Capitalized using-import names used as receivers (e.g. Hunt.footer, Utils.embed)",
+      "match": "\\b([A-Z][A-Za-z0-9_]*)(?=\\.)",
+      "name": "variable.parameter.draconic"
+    },
+
     "avrae-builtins": {
       "comment": "Avrae-specific built-in functions and objects",
       "name": "support.function.builtin.avrae.draconic",
