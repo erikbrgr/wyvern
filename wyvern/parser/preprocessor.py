@@ -23,6 +23,10 @@ _DOUBLE_BRACE_RE = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
 _SINGLE_BRACE_RE = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
 # &ARGS& and &N& argument placeholders
 _ARG_PLACEHOLDER_RE = re.compile(r"&(\w+)&")
+# Draconic allows `except "ErrorName":` and `except 'ErrorName' as e:` — invalid Python
+# Regex may misfire if this pattern appears inside a string literal, which is an accepted
+# limitation given the preprocessor is regex-based throughout.
+_DRAC_EXCEPT_RE = re.compile(r'\bexcept\s+(?:"[^"]+"|\'[^\']+\')\s*(?:as\s+(\w+)\s*)?:')
 
 
 def extract_regions(source: str, uri: str = "") -> list[Region]:
@@ -63,5 +67,10 @@ def extract_regions(source: str, uri: str = "") -> list[Region]:
 
 
 def _normalize(code: str) -> str:
-    """Replace Draconic argument placeholders with valid Python identifiers."""
-    return _ARG_PLACEHOLDER_RE.sub(lambda m: f"__arg_{m.group(1).lower()}__", code)
+    """Replace Draconic-specific syntax with valid Python equivalents for ast.parse()."""
+    code = _ARG_PLACEHOLDER_RE.sub(lambda m: f"__arg_{m.group(1).lower()}__", code)
+    code = _DRAC_EXCEPT_RE.sub(
+        lambda m: f"except Exception as {m.group(1)}:" if m.group(1) else "except Exception:",
+        code,
+    )
+    return code

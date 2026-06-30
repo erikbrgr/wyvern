@@ -53,19 +53,40 @@ def get_completions(source: str, position: types.Position) -> types.CompletionLi
     return types.CompletionList(is_incomplete=False, items=items)
 
 
+def _normalize_calls(prefix: str) -> str:
+    """Collapse function argument lists to () so the chain regex handles non-empty args.
+
+    list(level_mult).    ->  list().
+    character().cc("x"). ->  character().cc().
+    """
+    result = []
+    depth = 0
+    for ch in prefix:
+        if ch == "(":
+            depth += 1
+            result.append("(")
+        elif ch == ")":
+            if depth > 0:
+                depth -= 1
+            if depth == 0:
+                result.append(")")
+        elif depth == 0:
+            result.append(ch)
+    return "".join(result)
+
+
 def _get_member_completions(prefix: str) -> list[types.CompletionItem] | None:
     """
     If `prefix` ends with an attribute-access chain, return completion items
     for the final type's members.  Returns None if no attribute access is detected.
 
-    Handles single-level:   character().  →  AliasCharacter members
-    Handles two-level:      ctx.author.   →  AliasAuthor members
+    Handles single-level:   character().      ->  AliasCharacter members
+    Handles two-level:      ctx.author.       ->  AliasAuthor members
+    Handles call args:      list(items).      ->  list members
+    Handles chained args:   character().cc(n). -> AliasCustomCounter members
     """
-    # Match the chain of identifiers/calls before the trailing dot
-    # e.g. "character()." → ["character()"]
-    #      "ctx.author."  → ["ctx", "author"]
-    #      "combat().me." → ["combat()", "me"]
-    m = re.search(r'((?:\w+(?:\(\))?\.)*\w+(?:\(\))?)\.$', prefix)
+    normalized = _normalize_calls(prefix)
+    m = re.search(r'((?:\w+(?:\(\))?\.)*\w+(?:\(\))?)\.$', normalized)
     if not m:
         return None
 
@@ -77,6 +98,14 @@ def _get_member_completions(prefix: str) -> list[types.CompletionItem] | None:
         return None
 
     return _class_completion_items(type_name)
+
+
+def _unwrap_type(type_str: str) -> str:
+    """Strip '| None' and unwrap list[X] → X so list properties chain correctly."""
+    t = type_str.split("|")[0].strip()
+    if t.startswith("list[") and t.endswith("]"):
+        t = t[5:-1]
+    return t
 
 
 def _resolve_chain(parts: list[str]) -> str | None:
@@ -91,8 +120,7 @@ def _resolve_chain(parts: list[str]) -> str | None:
     current_type = BUILTINS[root].return_type
     if not current_type:
         return None
-    # Strip "| None" suffixes (e.g. "SimpleCombat | None" → "SimpleCombat")
-    current_type = current_type.split("|")[0].strip()
+    current_type = _unwrap_type(current_type)
 
     # Walk subsequent parts using CLASS_REGISTRY member return types
     for part in parts[1:]:
@@ -102,7 +130,7 @@ def _resolve_chain(parts: list[str]) -> str | None:
         member_type = _find_member_type(cls_info, part)
         if member_type is None:
             return None
-        current_type = member_type.split("|")[0].strip()
+        current_type = _unwrap_type(member_type)
 
     return current_type if current_type in CLASS_REGISTRY else None
 
@@ -136,6 +164,7 @@ def _class_completion_items(type_name: str) -> list[types.CompletionItem]:
     """Return completion items for all members of `type_name`, including inherited ones."""
     items: list[types.CompletionItem] = []
     visited: set[str] = set()
+    seen_names: set[str] = set()
 
     def _collect(name: str) -> None:
         if name in visited or name not in CLASS_REGISTRY:
@@ -143,9 +172,13 @@ def _class_completion_items(type_name: str) -> list[types.CompletionItem]:
         visited.add(name)
         cls_info = CLASS_REGISTRY[name]
         for member in cls_info.methods + cls_info.properties:
-            items.append(_builtin_item(member.name, member))
+            if member.name not in seen_names:
+                seen_names.add(member.name)
+                items.append(_builtin_item(member.name, member))
         for base in cls_info.bases:
             _collect(base)
+        if cls_info.element_type:
+            _collect(cls_info.element_type)
 
     _collect(type_name)
     return items
