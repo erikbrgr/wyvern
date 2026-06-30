@@ -4,12 +4,17 @@ AST parsing and symbol table construction for Draconic source files.
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass, field
 from typing import Literal
 
 from lsprotocol import types
 
 from wyvern.parser.preprocessor import Region, extract_regions
+
+# Regex-based fallback for extracting using() imports when ast.parse() fails
+_USING_REGEX = re.compile(r'\busing\s*\(([^)]+)\)')
+_USING_KW_REGEX = re.compile(r'([A-Za-z_]\w*)\s*=\s*["\']([^"\']+)["\']')
 
 
 @dataclass
@@ -43,6 +48,9 @@ def parse(source: str, uri: str = "") -> ParseResult:
             result.using_imports.update(_extract_using_imports(tree))
         except SyntaxError as e:
             result.syntax_errors.append((region, e))
+            # AST parse failed (e.g. module-level `return` in alias blocks) — still
+            # extract using() imports with regex so completions can work.
+            result.using_imports.update(_extract_using_imports_regex(region.code))
 
     return result
 
@@ -84,6 +92,15 @@ def _extract_using_imports(tree: ast.Module) -> dict[str, str]:
                 and isinstance(kw.value.value, str)
             ):
                 imports[kw.arg] = kw.value.value
+    return imports
+
+
+def _extract_using_imports_regex(code: str) -> dict[str, str]:
+    """Regex fallback for when ast.parse() fails — extracts using(Alias="uuid") calls."""
+    imports: dict[str, str] = {}
+    for m in _USING_REGEX.finditer(code):
+        for kw in _USING_KW_REGEX.finditer(m.group(1)):
+            imports[kw.group(1)] = kw.group(2)
     return imports
 
 
