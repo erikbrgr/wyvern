@@ -28,6 +28,7 @@ class ParseResult:
     trees: list[tuple[Region, ast.Module]] = field(default_factory=list)
     syntax_errors: list[tuple[Region, SyntaxError]] = field(default_factory=list)
     definitions: dict[str, DefinitionInfo] = field(default_factory=dict)
+    using_imports: dict[str, str] = field(default_factory=dict)  # alias -> gvar UUID
 
 
 def parse(source: str, uri: str = "") -> ParseResult:
@@ -39,10 +40,51 @@ def parse(source: str, uri: str = "") -> ParseResult:
             tree = ast.parse(region.code, mode="exec")
             result.trees.append((region, tree))
             _collect_definitions(tree, region, result.definitions)
+            result.using_imports.update(_extract_using_imports(tree))
         except SyntaxError as e:
             result.syntax_errors.append((region, e))
 
     return result
+
+
+def extract_top_level_definitions(source: str, uri: str = "") -> dict[str, DefinitionInfo]:
+    """Like parse(), but only returns module-level definitions — skips function-local vars."""
+    defs: dict[str, DefinitionInfo] = {}
+    for region in extract_regions(source, uri):
+        try:
+            tree = ast.parse(region.code, mode="exec")
+        except SyntaxError:
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                _add_def(defs, node.name, "function", node, region)
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    _collect_assign_targets(target, defs, region)
+            elif isinstance(node, ast.AugAssign):
+                _collect_assign_targets(node.target, defs, region)
+    return defs
+
+
+def _extract_using_imports(tree: ast.Module) -> dict[str, str]:
+    """Return {alias: uuid} for every using(Alias="uuid") call in the tree."""
+    imports: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "using"
+        ):
+            continue
+        for kw in node.value.keywords:
+            if (
+                kw.arg
+                and isinstance(kw.value, ast.Constant)
+                and isinstance(kw.value.value, str)
+            ):
+                imports[kw.arg] = kw.value.value
+    return imports
 
 
 def _collect_definitions(

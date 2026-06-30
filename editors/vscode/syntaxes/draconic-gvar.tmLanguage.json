@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Draconic",
+  "scopeName": "source.draconic.gvar",
+  "fileTypes": [],
+  "patterns": [
+    { "include": "#using-call" },
+    { "include": "#avrae-builtins" },
+    { "include": "source.python" }
+  ],
+  "repository": {
+    "using-call": {
+      "comment": "using() call — owns the whole block so keyword arg names get variable.parameter coloring",
+      "begin": "\\busing\\s*\\(",
+      "end": "\\)",
+      "beginCaptures": {
+        "0": { "name": "support.function.builtin.avrae.draconic" }
+      },
+      "patterns": [
+        {
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?==)",
+          "name": "variable.parameter.draconic"
+        },
+        { "include": "source.python" }
+      ]
+    },
+    "avrae-builtins": {
+      "comment": "Avrae-specific built-in functions and objects",
+      "name": "support.function.builtin.avrae.draconic",
+      "match": "\\b(roll|vroll|load_json|dump_json|load_yaml|get_gvar|set_uvar|get_uvar|delete_uvar|set_svar|get_svar|delete_svar|set_cvar|get_cvar|delete_cvar|err|header|randint|rand|randchoice|sqrt|argparse|character|combat|ctx|typeof|ceil|floor|time)\\b"
+    }
+  }
+}
