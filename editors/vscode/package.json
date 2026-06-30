@@ -14,7 +14,8 @@
   },
   "categories": ["Programming Languages", "Linters"],
   "activationEvents": [
-    "onLanguage:draconic"
+    "onLanguage:draconic",
+    "onLanguage:draconic-gvar"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -22,7 +23,13 @@
       {
         "id": "draconic",
         "aliases": ["Draconic", "draconic"],
-        "extensions": [".alias", ".snippet", ".gvar", ".draconic"],
+        "extensions": [".alias", ".snippet"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "draconic-gvar",
+        "aliases": ["Draconic", "draconic"],
+        "extensions": [".gvar", ".draconic"],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -33,6 +40,14 @@
         "path": "./syntaxes/draconic.tmLanguage.json",
         "embeddedLanguages": {
           "meta.embedded.block.python": "python"
+        }
+      },
+      {
+        "language": "draconic-gvar",
+        "scopeName": "source.draconic.gvar",
+        "path": "./syntaxes/draconic-gvar.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.python": "python"
         }
       }
     ],

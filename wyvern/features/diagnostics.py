@@ -11,6 +11,7 @@ from pygls.lsp.server import LanguageServer
 
 from wyvern.builtins import CLASS_REGISTRY
 from wyvern.parser.analysis import parse
+from wyvern.parser.gvar_resolver import resolve_gvar_definitions
 from wyvern.parser.preprocessor import Region
 
 # Method names whose return type is "None" in the registry.
@@ -43,7 +44,7 @@ _FORBIDDEN: dict[type[ast.AST], str] = {
 }
 
 
-def publish(ls: LanguageServer, uri: str, source: str) -> None:
+def publish(ls: LanguageServer, uri: str, source: str, workspace_paths: list[str] | None = None) -> None:
     result = parse(source, uri)
     diagnostics: list[types.Diagnostic] = []
 
@@ -52,6 +53,7 @@ def publish(ls: LanguageServer, uri: str, source: str) -> None:
 
     for region, tree in result.trees:
         diagnostics.extend(_lint_tree(tree, region))
+        diagnostics.extend(_check_unresolved_using(tree, region, workspace_paths or []))
 
     ls.text_document_publish_diagnostics(types.PublishDiagnosticsParams(uri=uri, diagnostics=diagnostics))
 
@@ -104,6 +106,72 @@ def _lint_tree(tree: ast.Module, region: Region) -> list[types.Diagnostic]:
         if d := _check_none_assign(node, region):
             diagnostics.append(d)
 
+        diagnostics.extend(_check_using_capitalization(node, region))
+
+    return diagnostics
+
+
+def _check_unresolved_using(tree: ast.Module, region: Region, workspace_paths: list[str]) -> list[types.Diagnostic]:
+    """Warn when a using() gvar UUID cannot be found in the workspace."""
+    diagnostics = []
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "using"
+        ):
+            continue
+        for kw in node.value.keywords:
+            if not (kw.arg and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str)):
+                continue
+            uuid = kw.value.value
+            if resolve_gvar_definitions(uuid, workspace_paths):
+                continue
+            line = (kw.value.lineno - 1) + region.line_offset
+            col = max(kw.value.col_offset - len(kw.arg) - 1, 0)
+            end_col = col + len(kw.arg)
+            diagnostics.append(
+                types.Diagnostic(
+                    range=types.Range(
+                        start=types.Position(line=line, character=col),
+                        end=types.Position(line=line, character=end_col),
+                    ),
+                    message=(
+                        f"Gvar `{uuid}` for `{kw.arg}` was not found in the workspace. "
+                        f"Download it from Avrae and save it as `{uuid}.gvar` anywhere in your project to enable completions and diagnostics."
+                    ),
+                    severity=types.DiagnosticSeverity.Warning,
+                    source="wyvern",
+                )
+            )
+    return diagnostics
+
+
+def _check_using_capitalization(node: ast.AST, region: Region) -> list[types.Diagnostic]:
+    """Warn when a using() keyword argument name does not start with an uppercase letter."""
+    if not isinstance(node, ast.Call):
+        return []
+    if not (isinstance(node.func, ast.Name) and node.func.id == "using"):
+        return []
+    diagnostics = []
+    for kw in node.keywords:
+        if kw.arg and not kw.arg[0].isupper():
+            line = (kw.value.lineno - 1) + region.line_offset
+            col = kw.value.col_offset - len(kw.arg) - 1  # point at the key name
+            col = max(col, 0)
+            end_col = col + len(kw.arg)
+            diagnostics.append(
+                types.Diagnostic(
+                    range=types.Range(
+                        start=types.Position(line=line, character=col),
+                        end=types.Position(line=line, character=end_col),
+                    ),
+                    message=f"`using()` argument `{kw.arg}` should be capitalized (e.g. `{kw.arg[0].upper() + kw.arg[1:]}`).",
+                    severity=types.DiagnosticSeverity.Warning,
+                    source="wyvern",
+                )
+            )
     return diagnostics
 
 
