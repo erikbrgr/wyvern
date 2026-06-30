@@ -105,12 +105,13 @@ def _get_member_completions(
     parts = [p.rstrip("()") for p in chain_str.split(".")]
     root = parts[0]
 
-    # If the root is a using-imported gvar name, resolve its symbols directly
+    # If the root is a using-imported gvar name, resolve its symbols directly.
+    # Return [] (not None) when gvar isn't found so we don't fall through to the
+    # default built-in list — an empty list is the right UX for an unloaded gvar.
     if root in using_imports and len(parts) == 1:
         uuid = using_imports[root]
         defs = resolve_gvar_definitions(uuid, workspace_paths)
-        if defs:
-            return [_gvar_def_item(name, info) for name, info in defs.items()]
+        return [_gvar_def_item(name, info) for name, info in defs.items()]
 
     type_name = _resolve_chain(parts)
     if type_name is None:
