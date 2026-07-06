@@ -5,10 +5,15 @@
   "fileTypes": [],
   "patterns": [
     { "include": "#using-call" },
-    { "include": "#using-name-ref" },
     { "include": "#avrae-builtins" },
     { "include": "source.python" }
   ],
+  "injections": {
+    "L:source.draconic.gvar": {
+      "comment": "Applies using-name-ref at any nesting depth (f-strings, comprehensions, etc.), since Python's own nested constructs don't include our custom patterns",
+      "patterns": [{ "include": "#using-name-ref" }]
+    }
+  },
   "repository": {
     "using-call": {
       "comment": "using() call — owns the whole block so keyword arg names get variable.parameter coloring",
