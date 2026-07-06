@@ -9,6 +9,21 @@ from functools import lru_cache
 
 from wyvern.parser.analysis import DefinitionInfo, extract_top_level_definitions
 
+# Gvars authored by other alias coders and pulled in only via using() are kept
+# in this directory. They're fully resolved for completions/hover like any
+# other gvar, but diagnostics are suppressed when one is opened directly
+# since it isn't maintained in this project.
+USINGS_DIR_PARTS = (".wyvern", "usings")
+
+
+def is_usings_path(path: str) -> bool:
+    """Return True if `path` lives inside a `.wyvern/usings/` directory."""
+    parts = path.replace("\\", "/").split("/")
+    for i in range(len(parts) - len(USINGS_DIR_PARTS) + 1):
+        if tuple(parts[i : i + len(USINGS_DIR_PARTS)]) == USINGS_DIR_PARTS:
+            return True
+    return False
+
 
 def resolve_gvar_definitions(uuid: str, workspace_paths: list[str]) -> dict[str, DefinitionInfo]:
     """Return the top-level symbol definitions from the gvar file matching `uuid`.
