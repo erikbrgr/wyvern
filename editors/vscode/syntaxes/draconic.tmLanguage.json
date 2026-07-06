@@ -11,6 +11,12 @@
     { "include": "#command-flags" },
     { "include": "#template-text" }
   ],
+  "injections": {
+    "L:meta.embedded.block.python": {
+      "comment": "Applies using-name-ref at any nesting depth inside embedded Python (f-strings, comprehensions, etc.), since Python's own nested constructs don't include our custom patterns",
+      "patterns": [{ "include": "#using-name-ref" }]
+    }
+  },
   "repository": {
     "drac2-block": {
       "comment": "<drac2>...</drac2> multi-line embedded Python code block",
@@ -29,7 +35,6 @@
       },
       "contentName": "meta.embedded.block.python",
       "patterns": [
-        { "include": "#using-name-ref" },
         { "include": "#avrae-builtins" },
         { "include": "source.python" }
       ]
@@ -48,7 +53,6 @@
       },
       "contentName": "meta.embedded.block.python",
       "patterns": [
-        { "include": "#using-name-ref" },
         { "include": "#avrae-builtins" },
         { "include": "source.python" }
       ]
