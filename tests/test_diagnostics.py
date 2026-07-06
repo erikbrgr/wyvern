@@ -1,12 +1,22 @@
 import ast
 
-from wyvern.features.diagnostics import _lint_tree, _syntax_error_diagnostic
+from wyvern.features.diagnostics import _lint_tree, _syntax_error_diagnostic, publish
 from wyvern.parser.analysis import parse
 from wyvern.parser.preprocessor import Region
 
 
 def _region(line_offset: int = 0) -> Region:
     return Region(code="", line_offset=line_offset)
+
+
+class _FakeLanguageServer:
+    """Minimal stand-in for pygls's LanguageServer, capturing published diagnostics."""
+
+    def __init__(self):
+        self.published = None
+
+    def text_document_publish_diagnostics(self, params):
+        self.published = params.diagnostics
 
 
 def test_import_forbidden():
@@ -70,3 +80,17 @@ def test_valid_alias_no_diagnostics():
     for region, tree in result.trees:
         diags.extend(_lint_tree(tree, region))
     assert diags == []
+
+
+def test_usings_dir_gvar_suppresses_diagnostics():
+    ls = _FakeLanguageServer()
+    source = "import os\nclass Foo:\n    pass\n"  # would normally trigger diagnostics
+    publish(ls, "file:///project/.wyvern/usings/abc123.gvar", source)
+    assert ls.published == []
+
+
+def test_regular_gvar_still_gets_diagnostics():
+    ls = _FakeLanguageServer()
+    source = "import os\n"
+    publish(ls, "file:///project/gvars/abc123.gvar", source)
+    assert len(ls.published) == 1

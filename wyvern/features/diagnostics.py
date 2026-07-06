@@ -11,7 +11,7 @@ from pygls.lsp.server import LanguageServer
 
 from wyvern.builtins import CLASS_REGISTRY
 from wyvern.parser.analysis import parse
-from wyvern.parser.gvar_resolver import resolve_gvar_definitions
+from wyvern.parser.gvar_resolver import is_usings_path, resolve_gvar_definitions
 from wyvern.parser.preprocessor import Region
 
 # Method names whose return type is "None" in the registry.
@@ -45,6 +45,12 @@ _FORBIDDEN: dict[type[ast.AST], str] = {
 
 
 def publish(ls: LanguageServer, uri: str, source: str, workspace_paths: list[str] | None = None) -> None:
+    if is_usings_path(uri):
+        # Gvars vendored under .wyvern/usings/ aren't authored in this project;
+        # don't lint them, but they remain resolvable for completions/hover.
+        ls.text_document_publish_diagnostics(types.PublishDiagnosticsParams(uri=uri, diagnostics=[]))
+        return
+
     result = parse(source, uri)
     diagnostics: list[types.Diagnostic] = []
 
