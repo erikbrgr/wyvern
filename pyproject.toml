@@ -5,10 +5,17 @@ build-backend = "hatchling.build"
 [project]
 name = "wyvern-lsp"
 version = "0.1.0"
-description = "A Language Server for Avrae's Draconic scripting language"
+description = "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
+keywords = ["avrae", "draconic", "lsp", "language-server", "d&d", "discord"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "pygls>=2.0.0",
     "lsprotocol>=2025.0.0",
