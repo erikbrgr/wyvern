@@ -1,14 +1,20 @@
 {
   "name": "wyvern-lsp",
-  "displayName": "Wyvern — Draconic Language Support",
-  "description": "LSP-powered language support for Avrae's Draconic: diagnostics, hover docs, code completion, and improved syntax highlighting.",
+  "displayName": "Wyvern LSP",
+  "description": "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting.",
   "version": "0.1.0",
   "publisher": "erikbrgr",
   "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#74258a",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/erikbrgr/wyvern"
   },
+  "keywords": ["avrae", "draconic", "lsp", "d&d", "discord", "alias"],
   "engines": {
     "vscode": "^1.75.0"
   },
