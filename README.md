@@ -29,3 +29,7 @@ Wyvern pairs naturally with [Croebh's Avrae Utilities](https://github.com/Croebh
 ## Contributing
 
 Wyvern is open source under the MIT license. Issues and pull requests are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Credits
+
+Wyvern icon by [Lorc](https://lorcblog.blogspot.com) via [game-icons.net](https://game-icons.net), used under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
