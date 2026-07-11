@@ -4,7 +4,7 @@
   "description": "One-click install for full Avrae alias development: Avrae Utilities (by Croebh) for GVAR management and API integration, plus Wyvern for Draconic language intelligence.",
   "version": "0.1.0",
   "publisher": "erikbrgr",
-  "license": "GPL-3.0",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/erikbrgr/wyvern"
