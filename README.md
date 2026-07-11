@@ -1,10 +1,6 @@
 # Wyvern
 
-**Stop debugging your Avrae aliases in Discord.**
-
 Wyvern is a Language Server Protocol (LSP) implementation for Draconic, the scripting language used by the [Avrae](https://avrae.io) Discord bot. It brings real IDE features to your editor: errors underlined as you type, hover documentation for Avrae's API, and autocomplete for the functions you actually use.
-
-*Screenshots coming soon.*
 
 ## Features
 
