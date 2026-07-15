@@ -14,14 +14,17 @@
     "type": "git",
     "url": "https://github.com/erikbrgr/wyvern"
   },
+  "homepage": "https://github.com/erikbrgr/wyvern",
+  "bugs": {
+    "url": "https://github.com/erikbrgr/wyvern/issues"
+  },
   "keywords": ["avrae", "draconic", "lsp", "d&d", "discord", "alias"],
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": ["Programming Languages", "Linters"],
   "activationEvents": [
-    "onLanguage:draconic",
-    "onLanguage:draconic-gvar"
+    "onCommand:extension.start"
   ],
   "main": "./out/extension.js",
   "contributes": {
