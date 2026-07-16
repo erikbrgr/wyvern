@@ -210,10 +210,28 @@ def _gvar_def_item(name: str, info: DefinitionInfo) -> types.CompletionItem:
         if info.kind == "function"
         else types.CompletionItemKind.Variable
     )
+    insert_text = name
+    insert_format = types.InsertTextFormat.PlainText
+    detail = f"(gvar) {info.kind}"
+
+    if info.kind == "function":
+        detail = f"(gvar) {name}({', '.join(info.params)})"
+        if info.params:
+            placeholders = ", ".join(
+                f"${{{i + 1}:{p}}}" for i, p in enumerate(info.params)
+            )
+            insert_text = f"{name}({placeholders})"
+            insert_format = types.InsertTextFormat.Snippet
+
     return types.CompletionItem(
         label=name,
         kind=kind,
-        detail=f"(gvar) {info.kind}",
+        detail=detail,
+        documentation=types.MarkupContent(kind=types.MarkupKind.Markdown, value=info.doc)
+        if info.doc
+        else None,
+        insert_text=insert_text,
+        insert_text_format=insert_format,
     )
 
 

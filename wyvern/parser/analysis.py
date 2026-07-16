@@ -25,6 +25,8 @@ class DefinitionInfo:
     col: int
     end_line: int
     end_col: int
+    params: list[str] = field(default_factory=list)
+    doc: str = ""
 
 
 @dataclass
@@ -65,7 +67,7 @@ def extract_top_level_definitions(source: str, uri: str = "") -> dict[str, Defin
             continue
         for node in tree.body:
             if isinstance(node, ast.FunctionDef):
-                _add_def(defs, node.name, "function", node, region)
+                _add_function_def(defs, node, region)
             elif isinstance(node, ast.Assign):
                 for target in node.targets:
                     _collect_assign_targets(target, defs, region)
@@ -109,7 +111,7 @@ def _collect_definitions(
 ) -> None:
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            _add_def(defs, node.name, "function", node, region)
+            _add_function_def(defs, node, region)
             for arg in node.args.args + node.args.posonlyargs + node.args.kwonlyargs:
                 _add_def_at(defs, arg.arg, "argument", arg.lineno, arg.col_offset, region)
         elif isinstance(node, ast.Assign):
@@ -147,6 +149,45 @@ def _add_def(
     col = node.col_offset + (region.col_offset if node.lineno == 1 else 0)
     end_col = getattr(node, "end_col_offset", col + len(name))
     defs[name] = DefinitionInfo(name, kind, line, col, end_line, end_col)
+
+
+def _add_function_def(
+    defs: dict[str, DefinitionInfo], node: ast.FunctionDef, region: Region
+) -> None:
+    _add_def(defs, node.name, "function", node, region)
+    defs[node.name].params = _format_params(node.args)
+    defs[node.name].doc = ast.get_docstring(node, clean=True) or ""
+
+
+def _format_params(args: ast.arguments) -> list[str]:
+    """Render a function's parameter list as display strings, e.g. ['x', 'y=None', '*args']."""
+    params: list[str] = []
+    positional = args.posonlyargs + args.args
+    n_no_default = len(positional) - len(args.defaults)
+    for i, arg in enumerate(positional):
+        if i < n_no_default:
+            params.append(arg.arg)
+        else:
+            params.append(f"{arg.arg}={_unparse_default(args.defaults[i - n_no_default])}")
+    if args.vararg:
+        params.append(f"*{args.vararg.arg}")
+    elif args.kwonlyargs:
+        params.append("*")
+    for kwarg, default in zip(args.kwonlyargs, args.kw_defaults):
+        if default is None:
+            params.append(kwarg.arg)
+        else:
+            params.append(f"{kwarg.arg}={_unparse_default(default)}")
+    if args.kwarg:
+        params.append(f"**{args.kwarg.arg}")
+    return params
+
+
+def _unparse_default(node: ast.expr) -> str:
+    try:
+        return ast.unparse(node)
+    except Exception:
+        return "..."
 
 
 def _add_def_at(

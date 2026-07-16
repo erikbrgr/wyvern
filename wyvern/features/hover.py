@@ -5,12 +5,22 @@ import re
 from lsprotocol import types
 
 from wyvern.builtins import BUILTINS, CLASS_REGISTRY
-from wyvern.parser.analysis import find_name_at, parse
+from wyvern.features.completion import _normalize_calls
+from wyvern.parser.analysis import DefinitionInfo, find_name_at, parse
+from wyvern.parser.gvar_resolver import resolve_gvar_definitions
 
 
-def get_hover(source: str, position: types.Position) -> types.Hover | None:
+def get_hover(
+    source: str,
+    position: types.Position,
+    workspace_paths: list[str] | None = None,
+) -> types.Hover | None:
+    result = parse(source)
+
     # Try attribute hover first (e.g. hovering "cc_str" in "character().cc_str")
-    attr_hover = _get_attribute_hover(source, position)
+    attr_hover = _get_attribute_hover(
+        source, position, result.using_imports, workspace_paths or []
+    )
     if attr_hover is not None:
         return attr_hover
 
@@ -37,7 +47,6 @@ def get_hover(source: str, position: types.Position) -> types.Hover | None:
         )
 
     # Fall back to user-defined symbols
-    result = parse(source)
     if name in result.definitions:
         defn = result.definitions[name]
         kind_label = {
@@ -54,7 +63,12 @@ def get_hover(source: str, position: types.Position) -> types.Hover | None:
     return None
 
 
-def _get_attribute_hover(source: str, position: types.Position) -> types.Hover | None:
+def _get_attribute_hover(
+    source: str,
+    position: types.Position,
+    using_imports: dict[str, str],
+    workspace_paths: list[str],
+) -> types.Hover | None:
     """
     If the cursor is on an attribute name (e.g. `cc_str` in `character().cc_str`),
     resolve the owner type and return hover info for that member.
@@ -91,6 +105,16 @@ def _get_attribute_hover(source: str, position: types.Position) -> types.Hover |
     chain_str = m2.group(1)
     parts = [p.rstrip("()") for p in chain_str.split(".")]
 
+    # If the chain root is a using-imported gvar name, resolve the member from
+    # the gvar's own definitions (e.g. hovering "write" in "Log.write(").
+    if parts[0] in using_imports and len(parts) == 1:
+        uuid = using_imports[parts[0]]
+        defs = resolve_gvar_definitions(uuid, workspace_paths)
+        defn = defs.get(member_name)
+        if defn is None:
+            return None
+        return _gvar_def_hover(member_name, defn)
+
     # Resolve type of the chain before the dot
     type_name = _resolve_chain(parts)
     if type_name is None:
@@ -108,6 +132,122 @@ def _get_attribute_hover(source: str, position: types.Position) -> types.Hover |
     md = f"```draconic\n{member_info.signature}\n```\n\n{member_info.doc}"
     if member_info.return_type:
         md += f"\n\n**Returns:** `{member_info.return_type}`"
+    return types.Hover(
+        contents=types.MarkupContent(kind=types.MarkupKind.Markdown, value=md)
+    )
+
+
+def get_signature_help(
+    source: str,
+    position: types.Position,
+    workspace_paths: list[str] | None = None,
+) -> types.SignatureHelp | None:
+    """Return parameter-hint info for the call the cursor is currently inside."""
+    lines = source.splitlines()
+    if position.line >= len(lines):
+        return None
+    prefix = lines[position.line][: position.character]
+
+    # Find the innermost unclosed "(" — the call the cursor is currently inside.
+    # Brackets before it are guaranteed balanced, so it's safe to normalize that part.
+    depth = 0
+    open_idx = None
+    open_char = None
+    for i in range(len(prefix) - 1, -1, -1):
+        ch = prefix[i]
+        if ch in ")]}":
+            depth += 1
+        elif ch in "([{":
+            if depth == 0:
+                open_idx, open_char = i, ch
+                break
+            depth -= 1
+    if open_idx is None or open_char != "(":
+        return None
+
+    normalized = _normalize_calls(prefix[:open_idx])
+    m = re.search(r'((?:\w+(?:\(\))?\.)*\w+)$', normalized)
+    if not m:
+        return None
+    parts = [p.rstrip("()") for p in m.group(1).split(".")]
+    active_parameter = _count_top_level_commas(prefix[open_idx + 1 :])
+
+    result = parse(source)
+    resolved = _resolve_signature(parts, result.using_imports, workspace_paths or [])
+    if resolved is None:
+        return None
+    label, params, doc = resolved
+
+    signature = types.SignatureInformation(
+        label=label,
+        documentation=types.MarkupContent(kind=types.MarkupKind.Markdown, value=doc)
+        if doc
+        else None,
+        parameters=[types.ParameterInformation(label=p) for p in params],
+    )
+    return types.SignatureHelp(
+        signatures=[signature], active_signature=0, active_parameter=active_parameter
+    )
+
+
+def _count_top_level_commas(s: str) -> int:
+    """Count commas not nested inside any bracket, string, or char literal."""
+    depth = 0
+    count = 0
+    for ch in s:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth = max(0, depth - 1)
+        elif ch == "," and depth == 0:
+            count += 1
+    return count
+
+
+def _resolve_signature(
+    parts: list[str], using_imports: dict[str, str], workspace_paths: list[str]
+) -> tuple[str, list[str], str] | None:
+    """Resolve a dotted call chain (root stripped of its own trailing call) to
+    (label, params, doc) for the function being called, or None."""
+    if not parts:
+        return None
+
+    if len(parts) == 1:
+        root = parts[0]
+        if root in BUILTINS and BUILTINS[root].kind == "function":
+            info = BUILTINS[root]
+            return info.signature, info.params or [], info.doc
+        return None
+
+    root, member_name = parts[0], parts[-1]
+
+    if root in using_imports and len(parts) == 2:
+        defs = resolve_gvar_definitions(using_imports[root], workspace_paths)
+        defn = defs.get(member_name)
+        if defn is None or defn.kind != "function":
+            return None
+        return f"{member_name}({', '.join(defn.params)})", defn.params, defn.doc
+
+    type_name = _resolve_chain(parts[:-1])
+    if type_name is None:
+        return None
+    cls_info = CLASS_REGISTRY.get(type_name)
+    if cls_info is None:
+        return None
+    member_info = _find_member(cls_info, member_name)
+    if member_info is None or member_info.kind != "function":
+        return None
+    return member_info.signature, member_info.params or [], member_info.doc
+
+
+def _gvar_def_hover(name: str, defn: DefinitionInfo) -> types.Hover:
+    if defn.kind == "function":
+        signature = f"{name}({', '.join(defn.params)})"
+        md = f"```draconic\n{signature}\n```"
+        if defn.doc:
+            md += f"\n\n{defn.doc}"
+    else:
+        md = f"```draconic\n({defn.kind}) {name}\n```"
     return types.Hover(
         contents=types.MarkupContent(kind=types.MarkupKind.Markdown, value=md)
     )
