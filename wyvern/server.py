@@ -57,7 +57,18 @@ def complete(ls: LanguageServer, params: types.CompletionParams) -> types.Comple
 @server.feature(types.TEXT_DOCUMENT_HOVER)
 def hover_handler(ls: LanguageServer, params: types.HoverParams) -> types.Hover | None:
     doc = ls.workspace.get_text_document(params.text_document.uri)
-    return hover.get_hover(doc.source, params.position)
+    return hover.get_hover(doc.source, params.position, _workspace_paths(ls, params.text_document.uri))
+
+
+@server.feature(
+    types.TEXT_DOCUMENT_SIGNATURE_HELP,
+    types.SignatureHelpOptions(trigger_characters=["(", ","]),
+)
+def signature_help(
+    ls: LanguageServer, params: types.SignatureHelpParams
+) -> types.SignatureHelp | None:
+    doc = ls.workspace.get_text_document(params.text_document.uri)
+    return hover.get_signature_help(doc.source, params.position, _workspace_paths(ls, params.text_document.uri))
 
 
 @server.feature(types.TEXT_DOCUMENT_DOCUMENT_SYMBOL)
