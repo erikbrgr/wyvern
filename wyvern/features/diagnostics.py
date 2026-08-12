@@ -10,9 +10,14 @@ from lsprotocol import types
 from pygls.lsp.server import LanguageServer
 
 from wyvern.builtins import CLASS_REGISTRY
+from wyvern.builtins.commands import KNOWN_LEADING_COMMANDS
 from wyvern.parser.analysis import parse
 from wyvern.parser.gvar_resolver import is_usings_path, resolve_gvar_definitions
 from wyvern.parser.preprocessor import Region
+
+# Marks the start of the first embedded code block in a template file — anything
+# before it is Avrae command text, whose first word names the command it invokes.
+_FIRST_BLOCK_RE = re.compile(r"<drac2>|\{\{")
 
 # Method names whose return type is "None" in the registry.
 # Assigning the result of these is always a bug.
@@ -54,6 +59,8 @@ def publish(ls: LanguageServer, uri: str, source: str, workspace_paths: list[str
     result = parse(source, uri)
     diagnostics: list[types.Diagnostic] = []
 
+    diagnostics.extend(_check_leading_command(source, uri))
+
     for region, error in result.syntax_errors:
         diagnostics.append(_syntax_error_diagnostic(error, region))
 
@@ -75,7 +82,11 @@ def _syntax_error_diagnostic(error: SyntaxError, region: Region) -> types.Diagno
     if m := _DETECTED_AT_LINE_RE.search(error.msg or ""):
         end_lineno = int(m.group(1)) - 1 + region.line_offset
     col = error.offset or 0
-    end_col = error.end_offset or col + 1
+    # Some SyntaxError subclasses (e.g. IndentationError "unexpected indent") set
+    # end_offset to -1 when unavailable, rather than None — `or` treats -1 as
+    # truthy, so a plain `error.end_offset or col + 1` would pass -1 straight
+    # through and lsprotocol rejects a negative Position.character.
+    end_col = error.end_offset if error.end_offset and error.end_offset >= 0 else col + 1
     return types.Diagnostic(
         range=types.Range(
             start=types.Position(line=lineno, character=col),
@@ -152,6 +163,38 @@ def _check_unresolved_using(tree: ast.Module, region: Region, workspace_paths: l
                 )
             )
     return diagnostics
+
+
+def _check_leading_command(source: str, uri: str) -> list[types.Diagnostic]:
+    """Warn when the Avrae command preceding a `<drac2>`/`{{expr}}` block isn't a
+    recognized top-level command — likely a typo (e.g. `embdd` instead of `embed`).
+    `.gvar`/`.draconic` files have no command envelope, so they're skipped."""
+    if uri.endswith((".gvar", ".draconic")):
+        return []
+    block_match = _FIRST_BLOCK_RE.search(source)
+    if not block_match:
+        return []
+    leading = source[: block_match.start()]
+    word_match = re.search(r"\S+", leading)
+    if not word_match:
+        return []
+    word = word_match.group(0)
+    if word in KNOWN_LEADING_COMMANDS:
+        return []
+    start = word_match.start()
+    line = source.count("\n", 0, start)
+    col = start - source.rfind("\n", 0, start) - 1
+    return [
+        types.Diagnostic(
+            range=types.Range(
+                start=types.Position(line=line, character=col),
+                end=types.Position(line=line, character=col + len(word)),
+            ),
+            message=f"`{word}` is not a recognized Avrae command — check for a typo.",
+            severity=types.DiagnosticSeverity.Warning,
+            source="wyvern",
+        )
+    ]
 
 
 def _check_using_capitalization(node: ast.AST, region: Region) -> list[types.Diagnostic]:

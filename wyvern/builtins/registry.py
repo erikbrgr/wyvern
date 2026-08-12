@@ -753,3 +753,36 @@ CLASS_REGISTRY: dict[str, ClassInfo] = {
 BUILTINS: dict[str, BuiltinInfo] = {
     b.name: b for b in _DRACONIC_BUILTINS + _AVRAE_BUILTINS
 }
+
+
+def unwrap_type(type_str: str) -> str:
+    """Strip '| None' and unwrap list[X] -> X so list properties chain correctly."""
+    t = type_str.split("|")[0].strip()
+    if t.startswith("list[") and t.endswith("]"):
+        t = t[5:-1]
+    return t
+
+
+def find_member_type(type_name: str, member_name: str) -> str | None:
+    """Return the (unwrapped) return_type of a named method/property on `type_name`, following bases."""
+    cls_info = CLASS_REGISTRY.get(type_name)
+    if cls_info is None:
+        return None
+    visited: set[str] = set()
+
+    def _search(info: ClassInfo) -> str | None:
+        if info.name in visited:
+            return None
+        visited.add(info.name)
+        for m in info.methods + info.properties:
+            if m.name == member_name:
+                return unwrap_type(m.return_type) if m.return_type else None
+        for base_name in info.bases:
+            base = CLASS_REGISTRY.get(base_name)
+            if base:
+                result = _search(base)
+                if result is not None:
+                    return result
+        return None
+
+    return _search(cls_info)

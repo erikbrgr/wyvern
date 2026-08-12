@@ -17,7 +17,7 @@ Wyvern is a Language Server Protocol (LSP) implementation for Draconic, the scri
 
 ## Installation
 
-**VSCode** - install the [Wyvern LSP](https://marketplace.visualstudio.com/...) extension from the marketplace. It will detect your Python interpreter and install the language server automatically.
+**VSCode** - install the Wyvern LSP extension from the marketplace. It will detect your Python interpreter and install the language server automatically.
 
 **Other editors (Neovim, Emacs, Helix, etc.)** - install the [wyvern-lsp](https://pypi.org/project/wyvern-lsp/) language server directly:
 
