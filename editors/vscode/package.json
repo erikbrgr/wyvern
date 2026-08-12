@@ -18,6 +18,9 @@
   "bugs": {
     "url": "https://github.com/erikbrgr/wyvern/issues"
   },
+  "sponsor": {
+    "url": "https://github.com/sponsors/erikbrgr"
+  },
   "keywords": ["avrae", "draconic", "lsp", "d&d", "discord", "alias"],
   "engines": {
     "vscode": "^1.75.0"

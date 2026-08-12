@@ -47,9 +47,11 @@ def extract_regions(source: str, uri: str = "") -> list[Region]:
         # Count newlines before the opening tag to get line_offset
         before = source[: match.start()]
         tag_line = before.count("\n")
+        code, line_offset = _wrap_if_indented(inner, tag_line)
         # The \n immediately after <drac2> is the first character of `inner`, so
-        # Python line 1 of the region sits on the same file line as the tag itself.
-        regions.append(Region(code=_normalize(inner), line_offset=tag_line))
+        # Python line 1 of the region sits on the same file line as the tag itself
+        # (adjusted by _wrap_if_indented if a wrapper line was inserted).
+        regions.append(Region(code=_normalize(code), line_offset=line_offset))
 
     # Extract {{expr}} single-expression inline blocks
     for match in _DOUBLE_BRACE_RE.finditer(source):
@@ -64,6 +66,18 @@ def extract_regions(source: str, uri: str = "") -> list[Region]:
         return [Region(code=_normalize(source), line_offset=0)]
 
     return regions
+
+
+def _wrap_if_indented(inner: str, tag_line: int) -> tuple[str, int]:
+    """Aliases commonly indent their whole <drac2> body for readability (it isn't
+    actually nested in anything). ast.parse() rejects a leading-indented module,
+    so wrap it in `if 1:` to make it a valid indented block — without dedenting,
+    which would shift every column and break diagnostic/hover position mapping.
+    """
+    match = re.search(r"^([ \t]*)\S", inner, re.MULTILINE)
+    if match and match.group(1):
+        return f"if 1:\n{inner}", tag_line - 1
+    return inner, tag_line
 
 
 def _normalize(code: str) -> str:

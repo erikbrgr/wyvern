@@ -4,7 +4,7 @@ import re
 
 from lsprotocol import types
 
-from wyvern.builtins import BUILTINS, CLASS_REGISTRY
+from wyvern.builtins import BUILTINS, CLASS_REGISTRY, find_member_type, unwrap_type
 from wyvern.features.completion import _normalize_calls
 from wyvern.parser.analysis import DefinitionInfo, find_name_at, parse
 from wyvern.parser.gvar_resolver import resolve_gvar_definitions
@@ -19,7 +19,7 @@ def get_hover(
 
     # Try attribute hover first (e.g. hovering "cc_str" in "character().cc_str")
     attr_hover = _get_attribute_hover(
-        source, position, result.using_imports, workspace_paths or []
+        source, position, result.using_imports, workspace_paths or [], result.inferred_types
     )
     if attr_hover is not None:
         return attr_hover
@@ -68,6 +68,7 @@ def _get_attribute_hover(
     position: types.Position,
     using_imports: dict[str, str],
     workspace_paths: list[str],
+    inferred_types: dict[str, str] | None = None,
 ) -> types.Hover | None:
     """
     If the cursor is on an attribute name (e.g. `cc_str` in `character().cc_str`),
@@ -116,7 +117,7 @@ def _get_attribute_hover(
         return _gvar_def_hover(member_name, defn)
 
     # Resolve type of the chain before the dot
-    type_name = _resolve_chain(parts)
+    type_name = _resolve_chain(parts, inferred_types or {})
     if type_name is None:
         return None
 
@@ -173,7 +174,9 @@ def get_signature_help(
     active_parameter = _count_top_level_commas(prefix[open_idx + 1 :])
 
     result = parse(source)
-    resolved = _resolve_signature(parts, result.using_imports, workspace_paths or [])
+    resolved = _resolve_signature(
+        parts, result.using_imports, workspace_paths or [], result.inferred_types
+    )
     if resolved is None:
         return None
     label, params, doc = resolved
@@ -205,7 +208,10 @@ def _count_top_level_commas(s: str) -> int:
 
 
 def _resolve_signature(
-    parts: list[str], using_imports: dict[str, str], workspace_paths: list[str]
+    parts: list[str],
+    using_imports: dict[str, str],
+    workspace_paths: list[str],
+    inferred_types: dict[str, str] | None = None,
 ) -> tuple[str, list[str], str] | None:
     """Resolve a dotted call chain (root stripped of its own trailing call) to
     (label, params, doc) for the function being called, or None."""
@@ -228,7 +234,7 @@ def _resolve_signature(
             return None
         return f"{member_name}({', '.join(defn.params)})", defn.params, defn.doc
 
-    type_name = _resolve_chain(parts[:-1])
+    type_name = _resolve_chain(parts[:-1], inferred_types or {})
     if type_name is None:
         return None
     cls_info = CLASS_REGISTRY.get(type_name)
@@ -253,27 +259,29 @@ def _gvar_def_hover(name: str, defn: DefinitionInfo) -> types.Hover:
     )
 
 
-def _resolve_chain(parts: list[str]) -> str | None:
+def _resolve_chain(parts: list[str], inferred_types: dict[str, str]) -> str | None:
     """Walk a dotted identifier chain and return the final resolved type, or None."""
     if not parts:
         return None
 
+    # Resolve the first identifier from global BUILTINS, falling back to a
+    # variable's inferred type (e.g. `char` after `char = character()`).
     root = parts[0]
-    if root not in BUILTINS:
+    if root in BUILTINS:
+        current_type = BUILTINS[root].return_type
+        if not current_type:
+            return None
+        current_type = unwrap_type(current_type)
+    elif root in inferred_types:
+        current_type = inferred_types[root]
+    else:
         return None
-    current_type = BUILTINS[root].return_type
-    if not current_type:
-        return None
-    current_type = current_type.split("|")[0].strip()
 
     for part in parts[1:]:
-        cls_info = CLASS_REGISTRY.get(current_type)
-        if cls_info is None:
-            return None
-        member_type = _find_member_return_type(cls_info, part)
+        member_type = find_member_type(current_type, part)
         if member_type is None:
             return None
-        current_type = member_type.split("|")[0].strip()
+        current_type = member_type
 
     return current_type if current_type in CLASS_REGISTRY else None
 
@@ -298,8 +306,3 @@ def _find_member(cls_info, name: str):
         return None
 
     return _search(cls_info)
-
-
-def _find_member_return_type(cls_info, name: str) -> str | None:
-    member = _find_member(cls_info, name)
-    return member.return_type if member else None

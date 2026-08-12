@@ -10,6 +10,7 @@ from typing import Literal
 
 from lsprotocol import types
 
+from wyvern.builtins import BUILTINS, find_member_type, unwrap_type
 from wyvern.parser.preprocessor import Region, extract_regions
 
 # Regex-based fallback for extracting using() imports when ast.parse() fails
@@ -36,6 +37,7 @@ class ParseResult:
     syntax_errors: list[tuple[Region, SyntaxError]] = field(default_factory=list)
     definitions: dict[str, DefinitionInfo] = field(default_factory=dict)
     using_imports: dict[str, str] = field(default_factory=dict)  # alias -> gvar UUID
+    inferred_types: dict[str, str] = field(default_factory=dict)  # variable name -> class type
 
 
 def parse(source: str, uri: str = "") -> ParseResult:
@@ -46,15 +48,41 @@ def parse(source: str, uri: str = "") -> ParseResult:
         try:
             tree = ast.parse(region.code, mode="exec")
             result.trees.append((region, tree))
-            _collect_definitions(tree, region, result.definitions)
+            _collect_definitions(tree, region, result.definitions, result.inferred_types)
             result.using_imports.update(_extract_using_imports(tree))
         except SyntaxError as e:
             result.syntax_errors.append((region, e))
-            # AST parse failed (e.g. module-level `return` in alias blocks) — still
-            # extract using() imports with regex so completions can work.
+            # AST parse failed (e.g. module-level `return`, or the user is mid-typing
+            # an incomplete line like "char."). Still extract using() imports with
+            # regex, and try blanking out just the offending line so definitions and
+            # inferred types from the rest of the (valid) region are still available
+            # for completions/hover while the user is typing.
             result.using_imports.update(_extract_using_imports_regex(region.code))
+            _collect_definitions_recovering(e, region, result.definitions, result.inferred_types)
 
     return result
+
+
+def _collect_definitions_recovering(
+    error: SyntaxError,
+    region: Region,
+    defs: dict[str, DefinitionInfo],
+    inferred_types: dict[str, str],
+) -> None:
+    """Best-effort recovery for a region that failed to parse: blank out the
+    offending line and retry, so definitions/types from earlier valid lines
+    are still collected (e.g. while the user is mid-typing `char.`)."""
+    if error.lineno is None:
+        return
+    lines = region.code.splitlines()
+    if not (1 <= error.lineno <= len(lines)):
+        return
+    lines[error.lineno - 1] = ""
+    try:
+        tree = ast.parse("\n".join(lines), mode="exec")
+    except SyntaxError:
+        return
+    _collect_definitions(tree, region, defs, inferred_types)
 
 
 def extract_top_level_definitions(source: str, uri: str = "") -> dict[str, DefinitionInfo]:
@@ -107,7 +135,10 @@ def _extract_using_imports_regex(code: str) -> dict[str, str]:
 
 
 def _collect_definitions(
-    tree: ast.AST, region: Region, defs: dict[str, DefinitionInfo]
+    tree: ast.AST,
+    region: Region,
+    defs: dict[str, DefinitionInfo],
+    inferred_types: dict[str, str] | None = None,
 ) -> None:
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
@@ -117,12 +148,44 @@ def _collect_definitions(
         elif isinstance(node, ast.Assign):
             for target in node.targets:
                 _collect_assign_targets(target, defs, region)
+            if (
+                inferred_types is not None
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+            ):
+                inferred = _infer_expr_type(node.value, inferred_types)
+                if inferred:
+                    inferred_types[node.targets[0].id] = inferred
         elif isinstance(node, ast.AugAssign):
             _collect_assign_targets(node.target, defs, region)
         elif isinstance(node, ast.NamedExpr):
             _add_def_at(defs, node.target.id, "variable", node.lineno, node.col_offset, region)
         elif isinstance(node, ast.For):
             _collect_assign_targets(node.target, defs, region)
+
+
+def _infer_expr_type(node: ast.expr, inferred_types: dict[str, str]) -> str | None:
+    """Best-effort resolve the builtin/class type an expression evaluates to.
+
+    Handles `character()`, `char.cc("x")`, `char.spellbook`, etc., by
+    recursively resolving the base of the chain via BUILTINS/CLASS_REGISTRY
+    or an already-inferred variable type.
+    """
+    if isinstance(node, ast.Call):
+        func = node.func
+        if isinstance(func, ast.Name):
+            info = BUILTINS.get(func.id)
+            return unwrap_type(info.return_type) if info and info.return_type else None
+        if isinstance(func, ast.Attribute):
+            base_type = _infer_expr_type(func.value, inferred_types)
+            return find_member_type(base_type, func.attr) if base_type else None
+        return None
+    if isinstance(node, ast.Attribute):
+        base_type = _infer_expr_type(node.value, inferred_types)
+        return find_member_type(base_type, node.attr) if base_type else None
+    if isinstance(node, ast.Name):
+        return inferred_types.get(node.id)
+    return None
 
 
 def _collect_assign_targets(

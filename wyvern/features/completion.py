@@ -4,7 +4,7 @@ import re
 
 from lsprotocol import types
 
-from wyvern.builtins import BUILTINS, CLASS_REGISTRY, BuiltinInfo
+from wyvern.builtins import BUILTINS, CLASS_REGISTRY, BuiltinInfo, find_member_type, unwrap_type
 from wyvern.parser.analysis import DefinitionInfo, parse
 from wyvern.parser.gvar_resolver import resolve_gvar_definitions
 
@@ -36,7 +36,9 @@ def get_completions(
     result = parse(source)
 
     # Check for attribute access (e.g. "character().", "ctx.author.", "Hunt.")
-    members = _get_member_completions(prefix, result.using_imports, workspace_paths or [])
+    members = _get_member_completions(
+        prefix, result.using_imports, workspace_paths or [], result.inferred_types
+    )
     if members is not None:
         return types.CompletionList(is_incomplete=False, items=members)
 
@@ -85,6 +87,7 @@ def _get_member_completions(
     prefix: str,
     using_imports: dict[str, str],
     workspace_paths: list[str],
+    inferred_types: dict[str, str] | None = None,
 ) -> list[types.CompletionItem] | None:
     """
     If `prefix` ends with an attribute-access chain, return completion items
@@ -95,6 +98,7 @@ def _get_member_completions(
     Handles call args:      list(items).      ->  list members
     Handles chained args:   character().cc(n). -> AliasCustomCounter members
     Handles using imports:  Hunt.             ->  symbols from the Hunt gvar
+    Handles inferred vars:  char = character(); char. -> AliasCharacter members
     """
     normalized = _normalize_calls(prefix)
     m = re.search(r'((?:\w+(?:\(\))?\.)*\w+(?:\(\))?)\.$', normalized)
@@ -113,71 +117,39 @@ def _get_member_completions(
         defs = resolve_gvar_definitions(uuid, workspace_paths)
         return [_gvar_def_item(name, info) for name, info in defs.items()]
 
-    type_name = _resolve_chain(parts)
+    type_name = _resolve_chain(parts, inferred_types or {})
     if type_name is None:
         return None
 
     return _class_completion_items(type_name)
 
 
-def _unwrap_type(type_str: str) -> str:
-    """Strip '| None' and unwrap list[X] → X so list properties chain correctly."""
-    t = type_str.split("|")[0].strip()
-    if t.startswith("list[") and t.endswith("]"):
-        t = t[5:-1]
-    return t
-
-
-def _resolve_chain(parts: list[str]) -> str | None:
+def _resolve_chain(parts: list[str], inferred_types: dict[str, str]) -> str | None:
     """Walk a dotted chain and return the final resolved type name, or None."""
     if not parts:
         return None
 
-    # Resolve the first identifier from global BUILTINS
+    # Resolve the first identifier from global BUILTINS, falling back to a
+    # variable's inferred type (e.g. `char` after `char = character()`).
     root = parts[0]
-    if root not in BUILTINS:
+    if root in BUILTINS:
+        current_type = BUILTINS[root].return_type
+        if not current_type:
+            return None
+        current_type = unwrap_type(current_type)
+    elif root in inferred_types:
+        current_type = inferred_types[root]
+    else:
         return None
-    current_type = BUILTINS[root].return_type
-    if not current_type:
-        return None
-    current_type = _unwrap_type(current_type)
 
     # Walk subsequent parts using CLASS_REGISTRY member return types
     for part in parts[1:]:
-        cls_info = CLASS_REGISTRY.get(current_type)
-        if cls_info is None:
-            return None
-        member_type = _find_member_type(cls_info, part)
+        member_type = find_member_type(current_type, part)
         if member_type is None:
             return None
-        current_type = _unwrap_type(member_type)
+        current_type = member_type
 
     return current_type if current_type in CLASS_REGISTRY else None
-
-
-def _find_member_type(cls_info, name: str) -> str | None:
-    """Return the return_type of a named method or property in a ClassInfo, following bases."""
-    from wyvern.builtins.registry import ClassInfo
-    visited: set[str] = set()
-
-    def _search(info: ClassInfo) -> str | None:
-        if info.name in visited:
-            return None
-        visited.add(info.name)
-
-        for m in info.methods + info.properties:
-            if m.name == name:
-                return m.return_type
-
-        for base_name in info.bases:
-            base = CLASS_REGISTRY.get(base_name)
-            if base:
-                result = _search(base)
-                if result is not None:
-                    return result
-        return None
-
-    return _search(cls_info)
 
 
 def _class_completion_items(type_name: str) -> list[types.CompletionItem]:
