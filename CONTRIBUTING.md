@@ -40,3 +40,10 @@ Open any `.alias`, `.snippet`, `.gvar`, or `.draconic` file in that window to ac
 ## Submitting changes
 
 Please open an issue before starting significant work, so we can discuss the approach first. Pull requests are welcome for bug fixes, documentation improvements, and new features.
+
+### PR titles and merging
+
+This repo uses [Release Please](https://github.com/googleapis/release-please) to automate versioning and changelogs, driven by [Conventional Commits](https://www.conventionalcommits.org/).
+
+- PRs are merged with **squash merge**, and the PR title becomes the squash commit message — so **PR titles must follow Conventional Commits** (e.g. `feat: add hover docs for gvars`, `fix: correct off-by-one in parser`, `feat!: drop Python 3.10 support`). A check runs on every PR to enforce this.
+- Individual commits within a PR don't need to follow the convention; only the PR title matters.
