@@ -27,7 +27,8 @@
   },
   "categories": ["Programming Languages", "Linters"],
   "activationEvents": [
-    "onCommand:extension.start"
+    "onLanguage:draconic",
+    "onLanguage:draconic-gvar"
   ],
   "main": "./out/extension.js",
   "contributes": {
