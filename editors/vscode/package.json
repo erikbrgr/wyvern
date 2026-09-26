@@ -26,10 +26,6 @@
     "vscode": "^1.75.0"
   },
   "categories": ["Programming Languages", "Linters"],
-  "activationEvents": [
-    "onLanguage:draconic",
-    "onLanguage:draconic-gvar"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
