@@ -12,8 +12,34 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      vscode_released: ${{ steps.rp.outputs['editors/vscode--release_created'] }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: rp
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Publishes the VS Code extension to Open VSX via trusted publishing (OIDC, no token).
+  # Register this repo + workflow file under Open VSX > Settings > Trusted Publishers.
+  publish-openvsx:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.vscode_released == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - run: npx --yes ovsx@1.2.0 publish --trusted-publishing
