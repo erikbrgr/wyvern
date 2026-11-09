@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wyvern-lsp"
-version = "0.1.0"
+version = "0.1.2"
 description = "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -37,6 +37,18 @@ dev = [
     "pytest-cov>=4.0",
     "mypy>=1.8",
     "ruff>=0.4",
+]
+
+[tool.hatch.build.targets.sdist]
+# Whitelist what goes into the source archive, so local tool folders
+# (.claude/, .remember/, editors/, worktrees) never get published.
+include = [
+    "/wyvern",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/pyproject.toml",
 ]
 
 [tool.hatch.build.targets.wheel]
