@@ -39,6 +39,18 @@ dev = [
     "ruff>=0.4",
 ]
 
+[tool.hatch.build.targets.sdist]
+# Whitelist what goes into the source archive, so local tool folders
+# (.claude/, .remember/, editors/, worktrees) never get published.
+include = [
+    "/wyvern",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/pyproject.toml",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["wyvern"]
 
