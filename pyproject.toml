@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wyvern-lsp"
-version = "0.1.1"
+version = "0.1.2"
 description = "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting."
 readme = "README.md"
 license = { file = "LICENSE" }
