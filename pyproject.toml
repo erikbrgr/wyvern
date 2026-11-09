@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting."
 readme = "README.md"
 license = { file = "LICENSE" }
+authors = [{ name = "Erik Burger" }]
 requires-python = ">=3.11"
 keywords = ["avrae", "draconic", "lsp", "language-server", "d&d", "discord"]
 classifiers = [
@@ -20,6 +21,11 @@ dependencies = [
     "pygls>=2.0.0",
     "lsprotocol>=2025.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/erikbrgr/wyvern"
+Source = "https://github.com/erikbrgr/wyvern"
+Issues = "https://github.com/erikbrgr/wyvern/issues"
 
 [project.scripts]
 wyvern = "wyvern.__main__:main"
