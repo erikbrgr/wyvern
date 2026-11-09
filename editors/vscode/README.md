@@ -12,11 +12,15 @@ Wyvern is a Language Server Protocol (LSP) implementation for Draconic, the scri
 
 ## Requirements
 
-This extension needs a Python interpreter to run the `wyvern-lsp` language server. On first activation it will detect your Python interpreter and offer to install `wyvern-lsp` for you via `pip`. You can also install it yourself:
+This extension is a thin client. The language features come from `wyvern-lsp`, a Python language server published to [PyPI](https://pypi.org/project/wyvern-lsp/) from the same open source repository ([github.com/erikbrgr/wyvern](https://github.com/erikbrgr/wyvern)). You need Python 3.11 or newer.
+
+Install the server yourself before using the extension:
 
 ```bash
 pip install wyvern-lsp
 ```
+
+The extension never installs or downloads anything on its own. If it can't find the server, it shows the install command for your interpreter and stops. Run the command, then reload the window.
 
 ## Extension Settings
 
