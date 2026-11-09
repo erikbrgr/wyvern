@@ -22,16 +22,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const installed = await isWyvernInstalled(pythonPath);
   if (!installed) {
+    // The extension never installs packages itself: it tells the user what to run
+    // and links to the source, so nothing is downloaded or executed without them.
+    const installCommand = `"${pythonPath}" -m pip install wyvern-lsp`;
     const choice = await vscode.window.showWarningMessage(
-      "Wyvern LSP server is not installed. Install it now?",
-      "Install",
-      "Not now"
+      "Wyvern: the wyvern-lsp language server is not installed for this Python interpreter. " +
+        `Install it from PyPI with: ${installCommand}`,
+      "Copy install command",
+      "View source"
     );
-    if (choice === "Install") {
-      await installWyvern(pythonPath);
-    } else {
-      return;
+    if (choice === "Copy install command") {
+      await vscode.env.clipboard.writeText(installCommand);
+    } else if (choice === "View source") {
+      await vscode.env.openExternal(vscode.Uri.parse("https://github.com/erikbrgr/wyvern"));
     }
+    return;
   }
 
   // If another extension (e.g. Croebh's) has claimed .gvar files, override the language
@@ -125,33 +130,4 @@ function isWyvernInstalled(pythonPath: string): Promise<boolean> {
   return new Promise((resolve) => {
     cp.exec(`"${pythonPath}" -m wyvern --help`, (err) => resolve(!err));
   });
-}
-
-function installWyvern(pythonPath: string): Promise<void> {
-  return Promise.resolve(vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: "Installing wyvern-lsp…",
-      cancellable: false,
-    },
-    () =>
-      new Promise<void>((resolve, reject) => {
-        const term = cp.spawn(pythonPath, ["-m", "pip", "install", "wyvern-lsp"], {
-          stdio: "pipe",
-        });
-        let stderr = "";
-        term.stderr.on("data", (d: Buffer) => { stderr += d.toString(); });
-        term.on("close", (code) => {
-          if (code === 0) {
-            vscode.window.showInformationMessage("wyvern-lsp installed successfully.");
-            resolve();
-          } else {
-            vscode.window.showErrorMessage(
-              `wyvern-lsp installation failed:\n${stderr}\n\nRun: pip install wyvern-lsp`
-            );
-            reject(new Error(stderr));
-          }
-        });
-      })
-  ));
 }
