@@ -2,7 +2,7 @@
   "name": "wyvern-lsp",
   "displayName": "Wyvern LSP",
   "description": "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "erikbrgr",
   "license": "MIT",
   "icon": "icon.png",
@@ -21,24 +21,46 @@
   "sponsor": {
     "url": "https://github.com/sponsors/erikbrgr"
   },
-  "keywords": ["avrae", "draconic", "lsp", "d&d", "discord", "alias"],
+  "keywords": [
+    "avrae",
+    "draconic",
+    "lsp",
+    "d&d",
+    "discord",
+    "alias"
+  ],
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": ["Programming Languages", "Linters"],
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "draconic",
-        "aliases": ["Draconic", "draconic"],
-        "extensions": [".alias", ".snippet"],
+        "aliases": [
+          "Draconic",
+          "draconic"
+        ],
+        "extensions": [
+          ".alias",
+          ".snippet"
+        ],
         "configuration": "./language-configuration.json"
       },
       {
         "id": "draconic-gvar",
-        "aliases": ["Draconic", "draconic"],
-        "extensions": [".gvar", ".draconic"],
+        "aliases": [
+          "Draconic",
+          "draconic"
+        ],
+        "extensions": [
+          ".gvar",
+          ".draconic"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -75,7 +97,11 @@
         },
         "wyvern.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Enable tracing of LSP communication between VS Code and the Wyvern server."
         }
