@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # One grouped PR a month keeps workflow actions current without a PR per action.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
