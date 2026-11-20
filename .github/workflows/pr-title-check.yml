@@ -1,0 +1,75 @@
+name: PR Title Check
+
+# PRs are squash-merged and Release Please reads the PR title, so it has to be a Conventional Commit.
+# Only feat and fix show in the changelogs; the other types are allowed but hidden.
+
+# pull_request_target so PRs from forks (this repo is public) can still get the comment. It never checks
+# out the PR's code and only reads the title from the event payload.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review]
+
+jobs:
+  check-title:
+    runs-on: ubuntu-slim
+    if: github.event.pull_request.draft == false
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            refactor
+            perf
+            test
+            ci
+            chore
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" in the PR title "{title}" starts with an uppercase character.
+
+      - name: Comment on validation failure
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const marker = '<!-- pr-title-validation -->';
+            const body = `## ❌ PR Title Validation Failed
+
+            **Current title**: "${title}"
+
+            Use a [Conventional Commits](https://www.conventionalcommits.org/) title, \`<type>: <description>\`:
+            - \`feat: ...\` for a new feature or enhancement (minor bump, shows in the changelog)
+            - \`fix: ...\` for a bug fix (patch bump, shows in the changelog)
+            - \`docs\`, \`refactor\`, \`perf\`, \`test\`, \`ci\`, \`chore\` for everything else (hidden, no release)
+
+            The description starts lowercase. Fix the title and the check re-runs.
+            ${marker}`;
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: context.issue.number });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: context.issue.number, body });
+            }
+
+      - name: Remove the failure comment once the title passes
+        if: success()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- pr-title-validation -->';
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: context.issue.number });
+            for (const c of comments.filter(c => c.user.type === 'Bot' && c.body.includes(marker))) {
+              await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id });
+            }
