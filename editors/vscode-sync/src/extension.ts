@@ -37,7 +37,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let model: SyncModel | undefined;
 
   const view = vscode.window.createTreeView("wyvernSync.live", { treeDataProvider: tree, showCollapseAll: true });
+  // Only here for the gutter markers against live; the Wyvern Sync view does the rest, so no commit box.
   const scm = vscode.scm.createSourceControl("wyvernSync", "Avrae (live)");
+  scm.inputBox.visible = false;
   scm.quickDiffProvider = {
     provideOriginalResource(uri: vscode.Uri) {
       const entry = model?.snapshot?.byFile.get(uri.fsPath);
