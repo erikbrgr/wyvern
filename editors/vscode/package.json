@@ -2,7 +2,7 @@
   "name": "wyvern-lsp",
   "displayName": "Wyvern LSP",
   "description": "An LSP for Draconic, providing diagnostics, hover docs, and code completion for Avrae alias scripting.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "erikbrgr",
   "license": "MIT",
   "icon": "icon.png",
