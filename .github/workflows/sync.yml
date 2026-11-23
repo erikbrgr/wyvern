@@ -1,21 +1,23 @@
-name: sync-core
+name: sync
 
 on:
   pull_request:
     paths:
       - packages/sync-core/**
-      - .github/workflows/sync-core.yml
+      - editors/vscode-sync/**
+      - .github/workflows/sync.yml
   push:
     branches:
       - main
     paths:
       - packages/sync-core/**
+      - editors/vscode-sync/**
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  core:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,3 +32,19 @@ jobs:
       - run: npm ci
       - run: npm run compile
       - run: npm test
+
+  extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors/vscode-sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: editors/vscode-sync/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - run: npx vsce package --out wyvern-sync.vsix

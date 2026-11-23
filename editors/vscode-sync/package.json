@@ -1,0 +1,182 @@
+{
+  "name": "wyvern-sync",
+  "displayName": "Wyvern Sync for Avrae",
+  "description": "See how your Avrae aliases, snippets and gvars differ from what's live, diff them, and push.",
+  "version": "0.0.0",
+  "publisher": "erikbrgr",
+  "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#74258a",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erikbrgr/wyvern"
+  },
+  "homepage": "https://github.com/erikbrgr/wyvern",
+  "bugs": {
+    "url": "https://github.com/erikbrgr/wyvern/issues"
+  },
+  "keywords": [
+    "avrae",
+    "draconic",
+    "alias",
+    "gvar",
+    "workshop",
+    "d&d",
+    "discord"
+  ],
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/collection.io"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wyvernSync",
+          "title": "Wyvern Sync",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "wyvernSync": [
+        {
+          "id": "wyvernSync.live",
+          "name": "Avrae"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "wyvernSync.live",
+        "contents": "Wyvern Sync compares your workspace with what's live on Avrae. It needs your Avrae token to read your collections and gvars.\n[Set Avrae Token](command:wyvernSync.setToken)\nThe token is the 'avrae-token' value in the Avrae dashboard's local storage. It's stored in VS Code's secret storage, never in settings.",
+        "when": "!wyvernSync.hasToken"
+      }
+    ],
+    "commands": [
+      {
+        "command": "wyvernSync.setToken",
+        "title": "Set Avrae Token",
+        "category": "Wyvern Sync"
+      },
+      {
+        "command": "wyvernSync.clearToken",
+        "title": "Forget Avrae Token",
+        "category": "Wyvern Sync"
+      },
+      {
+        "command": "wyvernSync.refresh",
+        "title": "Refresh from Avrae",
+        "category": "Wyvern Sync",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "wyvernSync.push",
+        "title": "Push to Avrae",
+        "category": "Wyvern Sync",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "wyvernSync.pushAll",
+        "title": "Push All Changes to Avrae",
+        "category": "Wyvern Sync",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "wyvernSync.register",
+        "title": "Add Collection to Workspace",
+        "category": "Wyvern Sync",
+        "icon": "$(add)"
+      },
+      {
+        "command": "wyvernSync.showDiff",
+        "title": "Compare with Live",
+        "category": "Wyvern Sync",
+        "icon": "$(diff)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "wyvernSync.refresh",
+          "when": "view == wyvernSync.live && wyvernSync.hasToken",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "wyvernSync.push",
+          "when": "view == wyvernSync.live && viewItem == entry-pushable",
+          "group": "inline"
+        },
+        {
+          "command": "wyvernSync.showDiff",
+          "when": "view == wyvernSync.live && viewItem =~ /^entry-(pushable|modified)$/"
+        },
+        {
+          "command": "wyvernSync.pushAll",
+          "when": "view == wyvernSync.live && viewItem == collection-changed",
+          "group": "inline"
+        },
+        {
+          "command": "wyvernSync.register",
+          "when": "view == wyvernSync.live && viewItem == collection-remote",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "wyvernSync.push",
+          "when": "false"
+        },
+        {
+          "command": "wyvernSync.pushAll",
+          "when": "false"
+        },
+        {
+          "command": "wyvernSync.register",
+          "when": "false"
+        },
+        {
+          "command": "wyvernSync.showDiff",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Wyvern Sync",
+      "properties": {
+        "wyvernSync.ignoredGvars": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Gvar ids that are never pushed, for example a gvar other aliases still depend on in its live form."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./ --noEmit && esbuild src/extension.ts --bundle --platform=node --target=node18 --external:vscode --outfile=out/extension.js --sourcemap",
+    "watch": "esbuild src/extension.ts --bundle --platform=node --target=node18 --external:vscode --outfile=out/extension.js --sourcemap --watch",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "~1.82.0",
+    "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.3.0"
+  }
+}
