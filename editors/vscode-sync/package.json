@@ -103,6 +103,12 @@
         "title": "Compare with Live",
         "category": "Wyvern Sync",
         "icon": "$(diff)"
+      },
+      {
+        "command": "wyvernSync.download",
+        "title": "Download Missing Files from Avrae",
+        "category": "Wyvern Sync",
+        "icon": "$(cloud-download)"
       }
     ],
     "menus": {
@@ -125,12 +131,17 @@
         },
         {
           "command": "wyvernSync.pushAll",
-          "when": "view == wyvernSync.live && viewItem == collection-changed",
+          "when": "view == wyvernSync.live && viewItem =~ /^collection-changed/",
           "group": "inline"
         },
         {
           "command": "wyvernSync.register",
           "when": "view == wyvernSync.live && viewItem == collection-remote",
+          "group": "inline"
+        },
+        {
+          "command": "wyvernSync.download",
+          "when": "view == wyvernSync.live && viewItem =~ /^collection.*-missing$/",
           "group": "inline"
         }
       ],
@@ -149,6 +160,10 @@
         },
         {
           "command": "wyvernSync.showDiff",
+          "when": "false"
+        },
+        {
+          "command": "wyvernSync.download",
           "when": "false"
         }
       ]

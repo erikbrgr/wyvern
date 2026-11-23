@@ -1,7 +1,17 @@
 import { promises as fs } from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import { AvraeApiError, COLLECTION_IO, link, matchCollection, pushEntry, SyncEntry, writeCollectionIo } from "@wyvern/sync-core";
+import {
+  AvraeApiError,
+  COLLECTION_IO,
+  LiveCollection,
+  matchCollection,
+  pullMissing,
+  pushEntry,
+  readCollectionIo,
+  SyncEntry,
+  writeCollectionIo,
+} from "@wyvern/sync-core";
 import { CachedClient, SyncModel } from "./model";
 import { changes, Node, SyncTree } from "./tree";
 
@@ -169,7 +179,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
 
-    const registration = matchCollection(await model.client.collection(collection.id), files);
+    const live = await model.client.collection(collection.id);
+    const registration = matchCollection(live, files);
     const leftover = [...registration.unmatchedLocal];
     for (const item of registration.unmatchedLive) {
       const candidates = leftover.filter((file) => file.endsWith(`.${item.kind}`));
@@ -179,7 +190,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const target = `${item.name}.${item.kind}`;
       const choice = await vscode.window.showQuickPick(
         [
-          { label: "Leave it only on Avrae", file: undefined },
+          { label: "None of these", file: undefined },
           ...candidates.map((file) => ({ label: file, description: `rename to ${target}`, file })),
         ],
         { title: `${collection.name}: no local file for ${target}`, placeHolder: `Which local file is ${target}?`, ignoreFocusOut: true },
@@ -190,13 +201,47 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (choice.file) {
         await renameWithDocs(folder, choice.file, item.name);
         leftover.splice(leftover.indexOf(choice.file), 1);
-        link(registration.io, item);
       }
     }
 
     await writeCollectionIo(folder, registration.io);
-    const linked = Object.keys(registration.io.aliases).length + Object.keys(registration.io.snippets).length;
-    vscode.window.showInformationMessage(`Added ${collection.name}: ${linked} linked to Avrae.`);
+    const written = await askToDownload(live, folder);
+    vscode.window.showInformationMessage(`Added ${collection.name}${written ? `, downloaded ${written} file${written === 1 ? "" : "s"}` : ""}.`);
+    await refresh();
+  }
+
+  async function askToDownload(live: LiveCollection, folder: string): Promise<number> {
+    const choice = await vscode.window.showInformationMessage(
+      `Download the files from ${live.name} that aren't in ${path.basename(folder)} yet?`,
+      { modal: true, detail: "Files that already exist are never overwritten." },
+      "Download",
+    );
+    if (choice !== "Download") {
+      return 0;
+    }
+    // Map live items that collection.io doesn't list yet, so the downloaded files are linked too.
+    const io = await readCollectionIo(folder);
+    const known = new Set([...Object.values(io.aliases), ...Object.values(io.snippets)]);
+    const fresh = matchCollection(live, []).io;
+    for (const kind of ["aliases", "snippets"] as const) {
+      for (const [name, id] of Object.entries(fresh[kind])) {
+        if (!known.has(id)) {
+          io[kind][name] = id;
+        }
+      }
+    }
+    await writeCollectionIo(folder, { ...io, name: io.name || live.name, collection: live._id });
+    return (await pullMissing(live, folder)).length;
+  }
+
+  async function download(node: Node): Promise<void> {
+    if (node.type !== "collection" || !model) {
+      return;
+    }
+    const written = await askToDownload(node.status.live, node.status.folder);
+    if (written) {
+      vscode.window.showInformationMessage(`Downloaded ${written} file${written === 1 ? "" : "s"} from ${node.status.live.name}.`);
+    }
     await refresh();
   }
 
@@ -219,6 +264,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("wyvernSync.push", push),
     vscode.commands.registerCommand("wyvernSync.pushAll", pushAll),
     vscode.commands.registerCommand("wyvernSync.register", register),
+    vscode.commands.registerCommand("wyvernSync.download", download),
     context.secrets.onDidChange((e) => e.key === TOKEN_KEY && connect()),
     vscode.workspace.onDidSaveTextDocument((doc) => WATCHED.test(doc.fileName) && refresh()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => refresh()),

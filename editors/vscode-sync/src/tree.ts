@@ -76,7 +76,8 @@ export class SyncTree implements vscode.TreeDataProvider<Node> {
         const mine = !all.some((entry) => readOnly.has(entry));
         item.description = `${countLabel(all)} · ${mine ? "" : "not yours · "}${vscode.workspace.asRelativePath(status.folder)}`;
         item.iconPath = new vscode.ThemeIcon(mine ? "folder-library" : "lock");
-        item.contextValue = changes(all, readOnly).length ? "collection-changed" : "collection";
+        const parts = ["collection", changes(all, readOnly).length ? "changed" : "", status.items.some((e) => e.state === "live-only") ? "missing" : ""];
+        item.contextValue = parts.filter(Boolean).join("-");
         item.tooltip = `${status.live.name}\n${status.folder}`;
         return item;
       }
