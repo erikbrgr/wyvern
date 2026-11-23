@@ -1,6 +1,8 @@
+import { promises as fs } from "fs";
+import * as path from "path";
 import { ItemKind, LiveCollection } from "./api";
 import { flattenAliases } from "./status";
-import { CollectionIo } from "./workspace";
+import { CollectionIo, readText } from "./workspace";
 
 export interface LiveItemRef {
   kind: ItemKind;
@@ -10,6 +12,7 @@ export interface LiveItemRef {
 }
 
 export interface Registration {
+  /** Every live alias and snippet, like avrae-vscode writes it. */
   io: CollectionIo;
   /** Live aliases and snippets with no local file of the same name. */
   unmatchedLive: LiveItemRef[];
@@ -23,22 +26,38 @@ export function matchCollection(live: LiveCollection, files: string[]): Registra
   const unmatchedLive: LiveItemRef[] = [];
   const local = new Set(files.filter((file) => file.endsWith(".alias") || file.endsWith(".snippet")));
 
-  const liveItems: LiveItemRef[] = [
-    ...[...flattenAliases(live.aliases)].map(([name, alias]) => ({ kind: "alias" as const, name, id: alias._id })),
-    ...live.snippets.map((snippet) => ({ kind: "snippet" as const, name: snippet.name, id: snippet._id })),
-  ];
-  for (const item of liveItems) {
-    const file = `${item.name}.${item.kind}`;
-    if (local.delete(file)) {
-      link(io, item);
-    } else {
-      unmatchedLive.push(item);
+  for (const [name, alias] of flattenAliases(live.aliases)) {
+    io.aliases[name] = alias._id;
+    if (!local.delete(`${name}.alias`)) {
+      unmatchedLive.push({ kind: "alias", name, id: alias._id });
+    }
+  }
+  for (const snippet of live.snippets) {
+    io.snippets[snippet.name] = snippet._id;
+    if (!local.delete(`${snippet.name}.snippet`)) {
+      unmatchedLive.push({ kind: "snippet", name: snippet.name, id: snippet._id });
     }
   }
   return { io, unmatchedLive, unmatchedLocal: [...local].sort() };
 }
 
-export function link(io: CollectionIo, item: LiveItemRef): void {
-  (item.kind === "alias" ? io.aliases : io.snippets)[item.name] = item.id;
-}
+/** Writes the live code, docs and description into folder for every file that doesn't exist yet. Never overwrites. */
+export async function pullMissing(live: LiveCollection, folder: string): Promise<string[]> {
+  const files: [string, string][] = [["readme.md", live.description]];
+  for (const [name, alias] of flattenAliases(live.aliases)) {
+    files.push([`${name}.alias`, alias.code], [`${name}.md`, alias.docs]);
+  }
+  for (const snippet of live.snippets) {
+    files.push([`${snippet.name}.snippet`, snippet.code], [`${snippet.name}.md`, snippet.docs]);
+  }
 
+  const written: string[] = [];
+  for (const [name, content] of files) {
+    const file = path.join(folder, name);
+    if (content && (await readText(file)) === undefined) {
+      await fs.writeFile(file, content, "utf-8");
+      written.push(name);
+    }
+  }
+  return written;
+}
