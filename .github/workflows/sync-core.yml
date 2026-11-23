@@ -1,0 +1,32 @@
+name: sync-core
+
+on:
+  pull_request:
+    paths:
+      - packages/sync-core/**
+      - .github/workflows/sync-core.yml
+  push:
+    branches:
+      - main
+    paths:
+      - packages/sync-core/**
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sync-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/sync-core/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - run: npm test
