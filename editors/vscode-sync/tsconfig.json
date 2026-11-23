@@ -6,9 +6,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "@wyvern/sync-core": ["../../packages/sync-core/src/index.ts"]
+      "@wyvern/sync-core": ["./../../packages/sync-core/src/index.ts"]
     }
   },
   "include": ["src"]
