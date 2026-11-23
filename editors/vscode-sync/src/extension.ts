@@ -18,6 +18,8 @@ import { changes, Node, SyncTree } from "./tree";
 const TOKEN_KEY = "avrae-token";
 const LIVE_SCHEME = "avrae-live";
 const WATCHED = /\.(alias|snippet|md|gvar|ya?ml)$|collection\.io$/;
+// How often coming back to the window may re-read Avrae, for changes made elsewhere (dashboard, another machine).
+const AVRAE_RECHECK_MS = 60_000;
 
 class LiveDocuments implements vscode.TextDocumentContentProvider {
   private readonly changed = new vscode.EventEmitter<vscode.Uri>();
@@ -57,12 +59,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await refresh();
   }
 
+  let pending: NodeJS.Timeout | undefined;
+  let lastAvraeRead = Date.now();
+
+  /** Re-diffs after local changes, batching bursts like a whole folder being added or deleted. */
+  function refreshSoon(): void {
+    clearTimeout(pending);
+    pending = setTimeout(() => refresh(), 300);
+  }
+
   async function refresh(fromAvrae = false): Promise<void> {
     if (!model) {
       return;
     }
     if (fromAvrae) {
       model.clear();
+      lastAvraeRead = Date.now();
     }
     const roots = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === "file").map((f) => f.uri.fsPath);
     try {
@@ -236,7 +248,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await refresh();
   }
 
+  // Any create or delete: a deleted folder only reports the folder itself, not the collection.io inside it.
+  const watcher = vscode.workspace.createFileSystemWatcher("**/*", false, true, false);
+  watcher.onDidCreate(refreshSoon);
+  watcher.onDidDelete(refreshSoon);
+  const collections = vscode.workspace.createFileSystemWatcher("**/collection.io", true, false, true);
+  collections.onDidChange(refreshSoon);
   context.subscriptions.push(
+    watcher,
+    collections,
+    vscode.window.onDidChangeWindowState((state) => state.focused && Date.now() - lastAvraeRead > AVRAE_RECHECK_MS && refresh(true)),
     vscode.commands.registerCommand("wyvernSync.setToken", async () => {
       const token = await vscode.window.showInputBox({
         title: "Avrae token",
@@ -257,7 +278,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("wyvernSync.register", register),
     vscode.commands.registerCommand("wyvernSync.download", download),
     context.secrets.onDidChange((e) => e.key === TOKEN_KEY && connect()),
-    vscode.workspace.onDidSaveTextDocument((doc) => WATCHED.test(doc.fileName) && refresh()),
+    vscode.workspace.onDidSaveTextDocument((doc) => WATCHED.test(doc.fileName) && refreshSoon()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => refresh()),
   );
 
