@@ -102,9 +102,6 @@ export class SyncTree implements vscode.TreeDataProvider<Node> {
         item.iconPath = STATE_ICONS[entry.state];
         item.contextValue = changes([entry], readOnly).length ? "entry-pushable" : `entry-${entry.state}`;
         item.tooltip = entry.file ? `${entry.file}\n${STATE_LABELS[entry.state]}` : STATE_LABELS[entry.state];
-        if (entry.file) {
-          item.resourceUri = vscode.Uri.file(entry.file);
-        }
         item.command = { command: "wyvernSync.open", title: "Open", arguments: [node] };
         return item;
       }
