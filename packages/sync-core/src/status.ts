@@ -3,7 +3,7 @@ import * as path from "path";
 import { AvraeClient, LiveAlias, LiveCollection, LiveGvar, LiveGvars } from "./api";
 import { collectionGvars, CollectionIo, gvarHeader, gvarKeyFromPath, readCollectionIo, readText } from "./workspace";
 
-export type SyncState = "unchanged" | "modified" | "local-only" | "live-only" | "not-editable" | "ignored";
+export type SyncState = "unchanged" | "modified" | "local-only" | "live-only" | "not-editable";
 
 export interface SyncEntry {
   kind: "collection" | "alias" | "snippet" | "gvar";
@@ -58,7 +58,7 @@ export function liveGvarsByKey(gvars: LiveGvars): Map<string, LiveGvar> {
   return new Map([...gvars.owned, ...gvars.editable].map((gvar) => [gvar.key.toLowerCase(), gvar]));
 }
 
-export function gvarEntry(key: string, file: string | undefined, local: string | undefined, live: LiveGvar | undefined, ignored: Set<string>): SyncEntry {
+export function gvarEntry(key: string, file: string | undefined, local: string | undefined, live: LiveGvar | undefined): SyncEntry {
   const name = (local !== undefined ? gvarHeader(local, "Name") : undefined) ?? "";
   const entry: SyncEntry = {
     kind: "gvar",
@@ -71,20 +71,18 @@ export function gvarEntry(key: string, file: string | undefined, local: string |
     live: live?.value,
     state: compare(local, live?.value),
   };
-  if (ignored.has(key)) {
-    entry.state = "ignored";
-  } else if (local !== undefined && live === undefined) {
+  if (local !== undefined && live === undefined) {
     entry.state = "not-editable";
   }
   return entry;
 }
 
 /** Every gvar the token's user owns or can edit, matched with a local file wherever the workspace has one. */
-export async function allGvarStatus(gvars: LiveGvars, index: Map<string, string>, ignored = new Set<string>()): Promise<SyncEntry[]> {
+export async function allGvarStatus(gvars: LiveGvars, index: Map<string, string>): Promise<SyncEntry[]> {
   const entries: SyncEntry[] = [];
   for (const [key, live] of liveGvarsByKey(gvars)) {
     const file = index.get(key);
-    entries.push(gvarEntry(key, file, file ? await readText(file) : undefined, live, ignored));
+    entries.push(gvarEntry(key, file, file ? await readText(file) : undefined, live));
   }
   return entries.sort(byLabel);
 }
@@ -153,11 +151,10 @@ export async function collectionStatus(
   client: AvraeClient,
   folder: string,
   index: Map<string, string>,
-  options: { gvars?: LiveGvars; ignoredGvars?: Set<string> } = {},
+  options: { gvars?: LiveGvars } = {},
 ): Promise<CollectionStatus> {
   const io = await readCollectionIo(folder);
   const [live, gvars] = await Promise.all([client.collection(io.collection), options.gvars ?? client.gvars()]);
-  const ignored = options.ignoredGvars ?? new Set<string>();
 
   const items = await itemEntries(folder, io, live);
   const readme = path.join(folder, "readme.md");
@@ -180,7 +177,7 @@ export async function collectionStatus(
   const gvarEntries: SyncEntry[] = [];
   for (const file of await collectionGvars(folder, io, index)) {
     const key = gvarKeyFromPath(file)!;
-    gvarEntries.push(gvarEntry(key, file, await readText(file), liveGvars.get(key), ignored));
+    gvarEntries.push(gvarEntry(key, file, await readText(file), liveGvars.get(key)));
   }
 
   return { folder, io, live, items, gvars: gvarEntries.sort(byLabel) };

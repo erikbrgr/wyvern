@@ -25,13 +25,13 @@ describe("flattenAliases", () => {
 });
 
 describe("collectionStatus", () => {
-  async function status(files: Record<string, string>, gvars = liveGvars({}), ignoredGvars?: Set<string>) {
+  async function status(files: Record<string, string>, gvars = liveGvars({})) {
     const root = await workspace({ "loot/collection.io": IO, ...files });
     const { client, calls } = fakeClient({
       "GET /workshop/collection/col1/full": { data: liveCollection() },
       "GET /customizations/gvars": gvars,
     });
-    const result = await collectionStatus(client, path.join(root, "loot"), await indexGvars(root), { ignoredGvars });
+    const result = await collectionStatus(client, path.join(root, "loot"), await indexGvars(root));
     return { root, result, calls };
   }
 
@@ -94,16 +94,15 @@ describe("collectionStatus", () => {
         "loot/loot.alias": `using(a="${GVAR_A}", b="${GVAR_B}", c="${GVAR_C}")`,
         [`gvars/${GVAR_A}.gvar`]: "# Name: Core\nsame",
         [`gvars/${GVAR_B}.gvar`]: "someone else's",
-        [`gvars/${GVAR_C}.gvar`]: "# Name: Utils\nfrozen",
+        [`gvars/${GVAR_C}.gvar`]: "# Name: Shared\nnew",
       },
       liveGvars({ [GVAR_A]: "# Name: Core\nsame" }, { [GVAR_C]: "old" }),
-      new Set([GVAR_C]),
     );
 
     expect(summary(result.gvars)).toEqual([
       [GVAR_B, "not-editable"],
       [`Core (${GVAR_A.slice(0, 8)})`, "unchanged"],
-      [`Utils (${GVAR_C.slice(0, 8)})`, "ignored"],
+      [`Shared (${GVAR_C.slice(0, 8)})`, "modified"],
     ]);
   });
 
