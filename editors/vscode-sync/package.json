@@ -152,19 +152,6 @@
           "when": "false"
         }
       ]
-    },
-    "configuration": {
-      "title": "Wyvern Sync",
-      "properties": {
-        "wyvernSync.ignoredGvars": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "description": "Gvar ids that are never pushed, for example a gvar other aliases still depend on in its live form."
-        }
-      }
     }
   },
   "scripts": {

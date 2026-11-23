@@ -62,9 +62,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       model.clear();
     }
     const roots = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === "file").map((f) => f.uri.fsPath);
-    const ignored = new Set(vscode.workspace.getConfiguration("wyvernSync").get<string[]>("ignoredGvars", []).map((key) => key.toLowerCase()));
     try {
-      const snapshot = await vscode.window.withProgress({ location: { viewId: "wyvernSync.live" } }, () => model!.load(roots, ignored));
+      const snapshot = await vscode.window.withProgress({ location: { viewId: "wyvernSync.live" } }, () => model!.load(roots));
       tree.update(snapshot);
       live.update([...snapshot.byFile.values(), ...snapshot.local.flatMap((s) => s.items), ...snapshot.gvars]);
       const count = changes([...snapshot.byFile.values()]).length;
@@ -221,7 +220,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.secrets.onDidChange((e) => e.key === TOKEN_KEY && connect()),
     vscode.workspace.onDidSaveTextDocument((doc) => WATCHED.test(doc.fileName) && refresh()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => refresh()),
-    vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration("wyvernSync") && refresh()),
   );
 
   await connect();

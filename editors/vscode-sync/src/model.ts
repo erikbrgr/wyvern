@@ -60,7 +60,7 @@ export class SyncModel {
     this.ownedIds = undefined;
   }
 
-  async load(roots: string[], ignoredGvars: Set<string>): Promise<Snapshot> {
+  async load(roots: string[]): Promise<Snapshot> {
     this.ownedIds ??= this.client.ownedCollectionIds();
     const gvars = await this.client.gvars();
 
@@ -72,14 +72,14 @@ export class SyncModel {
       }
     }
 
-    const local = await Promise.all(folders.map((folder) => collectionStatus(this.client, folder, index, { gvars, ignoredGvars })));
+    const local = await Promise.all(folders.map((folder) => collectionStatus(this.client, folder, index, { gvars })));
     const localIds = new Set(local.map((status) => status.io.collection));
     const remote = await Promise.all(
       (await this.ownedIds)
         .filter((id) => !localIds.has(id))
         .map(async (id) => ({ id, name: (await this.client.collection(id)).name })),
     );
-    const all = await allGvarStatus(gvars, index, ignoredGvars);
+    const all = await allGvarStatus(gvars, index);
 
     const byFile = new Map<string, SyncEntry>();
     for (const entry of [...local.flatMap((status) => [...status.items, ...status.gvars]), ...all]) {

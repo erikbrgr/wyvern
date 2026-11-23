@@ -14,7 +14,6 @@ const STATE_LABELS: Record<SyncState, string> = {
   "local-only": "not on Avrae",
   "live-only": "only on Avrae",
   "not-editable": "not yours to edit",
-  ignored: "ignored",
 };
 
 const STATE_ICONS: Record<SyncState, vscode.ThemeIcon> = {
@@ -23,7 +22,6 @@ const STATE_ICONS: Record<SyncState, vscode.ThemeIcon> = {
   "local-only": new vscode.ThemeIcon("file-add", new vscode.ThemeColor("gitDecoration.untrackedResourceForeground")),
   "live-only": new vscode.ThemeIcon("cloud", new vscode.ThemeColor("disabledForeground")),
   "not-editable": new vscode.ThemeIcon("lock", new vscode.ThemeColor("disabledForeground")),
-  ignored: new vscode.ThemeIcon("circle-slash", new vscode.ThemeColor("disabledForeground")),
 };
 
 export function changes(entries: SyncEntry[]): SyncEntry[] {

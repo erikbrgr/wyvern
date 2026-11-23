@@ -15,6 +15,3 @@ Files map to Avrae through `collection.io`, the same file [avrae-vscode](https:/
 
 The extension needs your Avrae token to read your collections and gvars. It's the `avrae-token` value in the Avrae dashboard's local storage. Run **Wyvern Sync: Set Avrae Token**; it's kept in VS Code's secret storage, never in settings. Treat it like a password.
 
-## Settings
-
-- `wyvernSync.ignoredGvars`: gvar ids that are never pushed, for a gvar other aliases still depend on in its live form.
