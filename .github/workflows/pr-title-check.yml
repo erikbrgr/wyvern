@@ -37,7 +37,7 @@ jobs:
 
       - name: Comment on validation failure
         if: failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = context.payload.pull_request.title;
@@ -64,7 +64,7 @@ jobs:
 
       - name: Remove the failure comment once the title passes
         if: success()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const marker = '<!-- pr-title-validation -->';
