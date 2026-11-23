@@ -47,7 +47,7 @@ export interface Snapshot {
   gvars: SyncEntry[];
   /** Entries of collections someone else owns (reference copies): diffable, never pushed. */
   readOnly: Set<SyncEntry>;
-  /** Every entry with a local file, by file path: the gutter markers and diffs read from here. */
+  /** Every entry with a local file, by file path. */
   byFile: Map<string, SyncEntry>;
 }
 

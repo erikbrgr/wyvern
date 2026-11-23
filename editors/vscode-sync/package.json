@@ -31,7 +31,6 @@
     "vscode": "^1.82.0"
   },
   "categories": [
-    "SCM Providers",
     "Other"
   ],
   "main": "./out/extension.js",
