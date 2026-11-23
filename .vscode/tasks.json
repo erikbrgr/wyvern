@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "compile LSP",
+      "type": "shell",
+      "command": "npm install --no-audit --no-fund && npm run compile",
+      "options": { "cwd": "${workspaceFolder}/editors/vscode" },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "compile Sync",
+      "type": "shell",
+      "command": "npm install --no-audit --no-fund && npm run compile",
+      "options": { "cwd": "${workspaceFolder}/editors/vscode-sync" },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "compile LSP + Sync",
+      "dependsOn": ["compile LSP", "compile Sync"],
+      "group": "build"
+    }
+  ]
+}

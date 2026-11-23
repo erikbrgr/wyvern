@@ -33,7 +33,7 @@ Open any `.alias`, `.snippet`, `.gvar`, or `.draconic` file in that window to ac
 
 ## Run Wyvern Sync too
 
-Wyvern Sync (`editors/vscode-sync`) is a separate extension that compares a workspace with live Avrae. To run it next to the LSP, pick **Run LSP + Sync** in the Run and Debug view of `editors/vscode/` before pressing **F5**. It installs and builds the sync extension first. Its shared logic lives in `packages/sync-core` (`npm test` there).
+Wyvern Sync (`editors/vscode-sync`) is a separate extension that compares a workspace with live Avrae. To run it next to the LSP, open the repo root in VS Code, pick **Run LSP + Sync** in the Run and Debug view and press **F5** (the same config also exists when you open `editors/vscode/` on its own). It installs and builds the sync extension first. Its shared logic lives in `packages/sync-core` (`npm test` there).
 
 ## Verify the LSP is running
 

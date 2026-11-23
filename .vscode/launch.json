@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run LSP + Sync",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode-sync"
+      ],
+      "outFiles": ["${workspaceFolder}/editors/vscode/out/**/*.js", "${workspaceFolder}/editors/vscode-sync/out/**/*.js"],
+      "preLaunchTask": "compile LSP + Sync"
+    },
+    {
+      "name": "Run LSP",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/editors/vscode"],
+      "outFiles": ["${workspaceFolder}/editors/vscode/out/**/*.js"],
+      "preLaunchTask": "compile LSP"
+    },
+    {
+      "name": "Run Sync",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/editors/vscode-sync"],
+      "outFiles": ["${workspaceFolder}/editors/vscode-sync/out/**/*.js"],
+      "preLaunchTask": "compile Sync"
+    }
+  ]
+}
