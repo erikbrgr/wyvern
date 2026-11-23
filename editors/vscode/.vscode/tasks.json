@@ -8,6 +8,20 @@
       "problemMatcher": ["$tsc"],
       "label": "npm: compile",
       "detail": "Compile the extension TypeScript"
+    },
+    {
+      "label": "compile Sync",
+      "type": "shell",
+      "command": "npm install --no-audit --no-fund && npm run compile",
+      "options": {
+        "cwd": "${workspaceFolder}/../vscode-sync"
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "compile LSP + Sync",
+      "dependsOn": ["npm: compile", "compile Sync"],
+      "group": "build"
     }
   ]
 }

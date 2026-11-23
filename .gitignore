@@ -19,3 +19,6 @@ editors/vscode/*.vsix
 packages/*/node_modules/
 packages/*/out/
 packages/*/coverage/
+editors/vscode-sync/node_modules/
+editors/vscode-sync/out/
+editors/vscode-sync/*.vsix
