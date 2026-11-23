@@ -7,25 +7,39 @@
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode",
-        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode-sync"
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode-sync",
+        "${workspaceFolder}/../avrae-aliases"
       ],
-      "outFiles": ["${workspaceFolder}/editors/vscode/out/**/*.js", "${workspaceFolder}/editors/vscode-sync/out/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/editors/vscode/out/**/*.js",
+        "${workspaceFolder}/editors/vscode-sync/out/**/*.js"
+      ],
       "preLaunchTask": "compile LSP + Sync"
     },
     {
       "name": "Run LSP",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/editors/vscode"],
-      "outFiles": ["${workspaceFolder}/editors/vscode/out/**/*.js"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode",
+        "${workspaceFolder}/../avrae-aliases"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/vscode/out/**/*.js"
+      ],
       "preLaunchTask": "compile LSP"
     },
     {
       "name": "Run Sync",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/editors/vscode-sync"],
-      "outFiles": ["${workspaceFolder}/editors/vscode-sync/out/**/*.js"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode-sync",
+        "${workspaceFolder}/../avrae-aliases"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/vscode-sync/out/**/*.js"
+      ],
       "preLaunchTask": "compile Sync"
     }
   ]
