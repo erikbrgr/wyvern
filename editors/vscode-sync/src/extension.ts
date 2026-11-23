@@ -66,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const snapshot = await vscode.window.withProgress({ location: { viewId: "wyvernSync.live" } }, () => model!.load(roots));
       tree.update(snapshot);
       live.update([...snapshot.byFile.values(), ...snapshot.local.flatMap((s) => s.items), ...snapshot.gvars]);
-      const count = changes([...snapshot.byFile.values()]).length;
+      const count = changes([...snapshot.byFile.values()], snapshot.readOnly).length;
       view.badge = count ? { value: count, tooltip: `${count} changed vs live Avrae` } : undefined;
     } catch (error) {
       await showError(error);
@@ -117,7 +117,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
     const { status } = node;
-    const pending = changes([...status.items, ...status.gvars]);
+    const pending = changes([...status.items, ...status.gvars], model.snapshot?.readOnly ?? new Set());
     const confirm = await vscode.window.showWarningMessage(
       `Push ${pending.length} change${pending.length === 1 ? "" : "s"} in ${status.live.name} to Avrae?`,
       { modal: true, detail: pending.map((e) => e.label).join("\n") },

@@ -24,12 +24,13 @@ const STATE_ICONS: Record<SyncState, vscode.ThemeIcon> = {
   "not-editable": new vscode.ThemeIcon("lock", new vscode.ThemeColor("disabledForeground")),
 };
 
-export function changes(entries: SyncEntry[]): SyncEntry[] {
-  return entries.filter((entry) => isPushable(entry));
+/** The entries a push would send: changed, and not in someone else's collection. */
+export function changes(entries: SyncEntry[], readOnly: Set<SyncEntry>): SyncEntry[] {
+  return entries.filter((entry) => isPushable(entry) && !readOnly.has(entry));
 }
 
 function countLabel(entries: SyncEntry[]): string {
-  const n = changes(entries).length;
+  const n = entries.filter((entry) => entry.state === "modified").length;
   return n ? `${n} changed` : "in sync";
 }
 
@@ -66,14 +67,16 @@ export class SyncTree implements vscode.TreeDataProvider<Node> {
   }
 
   getTreeItem(node: Node): vscode.TreeItem {
+    const readOnly = this.snapshot?.readOnly ?? new Set<SyncEntry>();
     switch (node.type) {
       case "collection": {
         const { status } = node;
         const all = [...status.items, ...status.gvars];
         const item = new vscode.TreeItem(status.live.name, vscode.TreeItemCollapsibleState.Collapsed);
-        item.description = `${countLabel(all)} · ${vscode.workspace.asRelativePath(status.folder)}`;
-        item.iconPath = new vscode.ThemeIcon("folder-library");
-        item.contextValue = changes(all).length ? "collection-changed" : "collection";
+        const mine = !all.some((entry) => readOnly.has(entry));
+        item.description = `${countLabel(all)} · ${mine ? "" : "not yours · "}${vscode.workspace.asRelativePath(status.folder)}`;
+        item.iconPath = new vscode.ThemeIcon(mine ? "folder-library" : "lock");
+        item.contextValue = changes(all, readOnly).length ? "collection-changed" : "collection";
         item.tooltip = `${status.live.name}\n${status.folder}`;
         return item;
       }
@@ -96,7 +99,7 @@ export class SyncTree implements vscode.TreeDataProvider<Node> {
         const item = new vscode.TreeItem(entry.label, vscode.TreeItemCollapsibleState.None);
         item.description = STATE_LABELS[entry.state];
         item.iconPath = STATE_ICONS[entry.state];
-        item.contextValue = isPushable(entry) ? "entry-pushable" : `entry-${entry.state}`;
+        item.contextValue = changes([entry], readOnly).length ? "entry-pushable" : `entry-${entry.state}`;
         item.tooltip = entry.file ? `${entry.file}\n${STATE_LABELS[entry.state]}` : STATE_LABELS[entry.state];
         if (entry.file) {
           item.resourceUri = vscode.Uri.file(entry.file);

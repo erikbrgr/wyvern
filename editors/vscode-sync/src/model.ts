@@ -45,6 +45,8 @@ export interface Snapshot {
   /** Collections the user owns on Avrae that no workspace folder holds yet. */
   remote: RemoteCollection[];
   gvars: SyncEntry[];
+  /** Entries of collections someone else owns (reference copies): diffable, never pushed. */
+  readOnly: Set<SyncEntry>;
   /** Every entry with a local file, by file path: the gutter markers and diffs read from here. */
   byFile: Map<string, SyncEntry>;
 }
@@ -74,8 +76,10 @@ export class SyncModel {
 
     const local = await Promise.all(folders.map((folder) => collectionStatus(this.client, folder, index, { gvars })));
     const localIds = new Set(local.map((status) => status.io.collection));
+    const ownedIds = new Set(await this.ownedIds);
+    const readOnly = new Set(local.filter((status) => !ownedIds.has(status.io.collection)).flatMap((status) => [...status.items, ...status.gvars]));
     const remote = await Promise.all(
-      (await this.ownedIds)
+      [...ownedIds]
         .filter((id) => !localIds.has(id))
         .map(async (id) => ({ id, name: (await this.client.collection(id)).name })),
     );
@@ -92,6 +96,7 @@ export class SyncModel {
       local: local.sort((a, b) => a.live.name.localeCompare(b.live.name)),
       remote: remote.sort((a, b) => a.name.localeCompare(b.name)),
       gvars: all,
+      readOnly,
       byFile,
     };
     return this.snapshot;
