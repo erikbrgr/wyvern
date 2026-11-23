@@ -6,6 +6,9 @@
       "package-name": "wyvern-lsp",
       "extra-files": [
         "wyvern/__init__.py"
+      ],
+      "exclude-paths": [
+        "packages"
       ]
     },
     "editors/vscode": {

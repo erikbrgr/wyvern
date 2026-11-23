@@ -14,3 +14,8 @@ editors/vscode/out/
 editors/vscode/*.vsix
 
 .DS_Store
+
+# Shared TypeScript packages
+packages/*/node_modules/
+packages/*/out/
+packages/*/coverage/
